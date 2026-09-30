@@ -1,0 +1,170 @@
+<!doctype html>
+<!-- 开发专用:高德卫星瓦片 + 本项目 GeoJSON 叠加校验工具(不参与构建,勿部署) -->
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>卫星校验 · 卫图层叠加</title>
+    <style>
+      body { margin: 0; overflow: hidden; background: #222; }
+      #wrap { position: relative; width: 100vw; height: 100vh; }
+      #tiles, #overlay { position: absolute; inset: 0; }
+      #tiles img { position: absolute; }
+      canvas { position: absolute; inset: 0; }
+      #info {
+        position: fixed; top: 8px; left: 8px; z-index: 10;
+        background: rgba(0,0,0,.6); color: #fff; padding: 6px 10px;
+        font: 12px/1.6 monospace; border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="wrap">
+      <div id="tiles"></div>
+      <canvas id="overlay"></canvas>
+    </div>
+    <div id="info"></div>
+    <script type="module">
+      // URL 参数:z 缩放, cx/cz 局部米制中心(可省,默认校区中心)
+      const q = new URLSearchParams(location.search);
+      const Z = +(q.get('z') || 17);
+      const CX = +(q.get('cx') || 0);
+      const CZ = +(q.get('cz') || 0);
+
+      // ---- 常量(与 src/config.ts 同步) ----
+      const LAT0 = 28.808876, LON0 = 104.668727;
+      const MLAT = 110540, MLON = 111320 * Math.cos((LAT0 * Math.PI) / 180);
+
+      // ---- GCJ-02 转换 ----
+      const PI = Math.PI, A = 6378245.0, EE = 0.00669342162296594326;
+      const tLat = (x, y) => {
+        let r = -100 + 2*x + 3*y + 0.2*y*y + 0.1*x*y + 0.2*Math.sqrt(Math.abs(x));
+        r += (20*Math.sin(6*x*PI)+20*Math.sin(2*x*PI))*2/3;
+        r += (20*Math.sin(y*PI)+40*Math.sin(y/3*PI))*2/3;
+        r += (160*Math.sin(y/12*PI)+320*Math.sin(y*PI/30))*2/3;
+        return r;
+      };
+      const tLon = (x, y) => {
+        let r = 300 + x + 2*y + 0.1*x*x + 0.1*x*y + 0.1*Math.sqrt(Math.abs(x));
+        r += (20*Math.sin(6*x*PI)+20*Math.sin(2*x*PI))*2/3;
+        r += (20*Math.sin(x*PI)+40*Math.sin(x/3*PI))*2/3;
+        r += (150*Math.sin(x/12*PI)+300*Math.sin(x/30*PI))*2/3;
+        return r;
+      };
+      function wgs2gcj(lon, lat) {
+        const dLat = tLat(lon-105, lat-35), dLon = tLon(lon-105, lat-35);
+        const rad = lat/180*PI;
+        let m = Math.sin(rad); m = 1 - EE*m*m;
+        const s = Math.sqrt(m);
+        return [lon + dLon*180/((A/s)*Math.cos(rad)*PI), lat + dLat*180/((A*(1-EE))/(m*s)*PI)];
+      }
+      const local2wgs = (x, z) => [LON0 + x/MLON, LAT0 - z/MLAT];
+      const local2gcj = (x, z) => wgs2gcj(...local2wgs(x, z));
+
+      // ---- 瓦片 ----
+      const TILE = 256;
+      function gcj2px(lon, lat, z) {
+        const n = 2 ** z;
+        const x = ((lon + 180) / 360) * n;
+        const r = (lat * PI) / 180;
+        const y = ((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / PI) / 2) * n;
+        return [x * TILE, y * TILE];
+      }
+
+      const [clon, clat] = local2gcj(CX, CZ);
+      const [cpx, cpy] = gcj2px(clon, clat, Z);
+      const originPxX = cpx - innerWidth / 2;
+      const originPxY = cpy - innerHeight / 2;
+      const M_PER_PX = (156543.03392 * Math.cos((LAT0 * PI) / 180)) / 2 ** Z;
+
+      const tilesEl = document.getElementById('tiles');
+      const x0 = Math.floor(originPxX / TILE), x1 = Math.floor((originPxX + innerWidth) / TILE);
+      const y0 = Math.floor(originPxY / TILE), y1 = Math.floor((originPxY + innerHeight) / TILE);
+      for (let ty = y0; ty <= y1; ty++) {
+        for (let tx = x0; tx <= x1; tx++) {
+          const img = document.createElement('img');
+          const sub = 1 + ((tx + ty) % 4);
+          img.src = `https://webst0${sub}.is.autonavi.com/appmaptile?style=6&x=${tx}&y=${ty}&z=${Z}`;
+          img.style.left = `${tx * TILE - originPxX}px`;
+          img.style.top = `${ty * TILE - originPxY}px`;
+          tilesEl.appendChild(img);
+        }
+      }
+      document.getElementById('info').textContent =
+        `z=${Z} 中心(米制)=(${CX},${CZ})  ${M_PER_PX.toFixed(3)} 米/像素  网格间距=100m`;
+
+      // ---- 叠加绘制 ----
+      const px = (x, z) => {
+        const [glon, glat] = local2gcj(x, z);
+        const [gx, gy] = gcj2px(glon, glat, Z);
+        return [gx - originPxX, gy - originPxY];
+      };
+      const cv = document.getElementById('overlay');
+      cv.width = innerWidth; cv.height = innerHeight;
+      const ctx = cv.getContext('2d');
+
+      function ring(ctx_, ringPts, close) {
+        ctx_.beginPath();
+        ringPts.forEach(([lon, lat], i) => {
+          const lx = (lon - LON0) * MLON, lz = -(lat - LAT0) * MLAT;
+          const [sx, sy] = px(lx, lz);
+          i ? ctx_.lineTo(sx, sy) : ctx_.moveTo(sx, sy);
+        });
+        if (close !== false) ctx_.closePath();
+      }
+
+      const res = await Promise.all(
+        ['buildings', 'pitch', 'boundary', 'poi'].map((n) => fetch(`./data/${n}.geojson`).then((r) => r.json())),
+      );
+      const [bld, pitch, bound, poi] = res;
+
+      // 网格:100m 间距,标注局部米制坐标
+      ctx.strokeStyle = 'rgba(255,255,0,.35)';
+      ctx.fillStyle = 'rgba(255,255,0,.9)';
+      ctx.font = '10px monospace';
+      for (let gx = -1400; gx <= 1400; gx += 100) {
+        const [ax, ay] = px(gx, -1400), [bx, by] = px(gx, 1400);
+        ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+      }
+      for (let gz = -1400; gz <= 1400; gz += 100) {
+        const [ax, ay] = px(-1400, gz), [bx, by] = px(1400, gz);
+        ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+        const [lx, ly] = px(0, gz);
+        ctx.fillText(String(gz), lx + 2, ly - 2);
+      }
+      for (let gx = -1400; gx <= 1400; gx += 100) {
+        const [lx, ly] = px(gx, 0);
+        ctx.fillText(String(gx), lx + 2, ly + 10);
+      }
+
+      // 校园边界
+      ctx.strokeStyle = '#ff00ff'; ctx.lineWidth = 2;
+      for (const f of bound.features) { ring(ctx, f.geometry.coordinates[0]); ctx.stroke(); }
+
+      // 建筑轮廓
+      ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 1;
+      for (const f of bld.features) {
+        const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
+        for (const rings of polys) { ring(ctx, rings[0]); ctx.stroke(); }
+      }
+
+      // 球场(半透明填充)
+      ctx.lineWidth = 1;
+      for (const f of pitch.features) {
+        const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
+        ctx.fillStyle = f.properties.manual ? 'rgba(255,0,0,.45)' : 'rgba(0,255,0,.3)';
+        ctx.strokeStyle = f.properties.manual ? '#ff0000' : '#00ff00';
+        for (const rings of polys) {
+          ring(ctx, rings[0]);
+          ctx.fill(); ctx.stroke();
+        }
+      }
+
+      // POI 点
+      ctx.fillStyle = '#ffff00';
+      for (const f of poi.features) {
+        const [sx, sy] = px(...( (p => [p[0], p[1]])(f.geometry.coordinates) ));
+        ctx.beginPath(); ctx.arc(sx, sy, 3, 0, 7); ctx.fill();
+      }
+    </script>
+  </body>
+</html>
