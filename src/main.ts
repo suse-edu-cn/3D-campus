@@ -3,7 +3,6 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { PALETTE } from './scene/palette';
 import { loadCampusData, loadManual } from './data/loader';
 import { ManualFeatures } from './scene/manual';
-import { ManualEditor } from './ui/editor';
 import { buildGround } from './scene/ground';
 import { buildGreen, buildWater, buildPitch } from './scene/layers';
 import { buildRoads } from './scene/roads';
@@ -11,13 +10,8 @@ import { buildBuildings } from './scene/buildings';
 import { buildTrees } from './scene/trees';
 import { buildLabels, createLabelRenderer, updateLabels } from './scene/labels';
 import { InfoPanel } from './ui/infoPanel';
-import { RoamController, type RoamMode } from './ui/roam';
 const app = document.getElementById('app')!;
 const loadingEl = document.getElementById('loading')!;
-const labelsBtn = document.getElementById('labels-toggle') as HTMLButtonElement;
-const modeBtn = document.getElementById('mode-toggle') as HTMLButtonElement;
-const editBtn = document.getElementById('edit-toggle') as HTMLButtonElement;
-const modeHint = document.getElementById('mode-hint')!;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -69,7 +63,6 @@ function hideLoading() {
 }
 
 let layers: Record<string, THREE.Object3D | null> = {};
-let roam: RoamController | null = null;
 let fly: { pos: THREE.Vector3; target: THREE.Vector3; t: number } | null = null;
 let lastTime: number | null = null;
 async function init() {
@@ -129,7 +122,6 @@ async function init() {
   let downX = 0, downY = 0;
   renderer.domElement.addEventListener('pointerdown', (e) => { downX = e.clientX; downY = e.clientY; });
   renderer.domElement.addEventListener('pointerup', (e) => {
-    if (roam!.mode !== 'orbit') return;
     if (Math.hypot(e.clientX - downX, e.clientY - downY) > 6) return;
     const hit = pickAt(e.clientX, e.clientY);
     if (hit) {
@@ -148,46 +140,19 @@ async function init() {
     }
   });
   renderer.domElement.addEventListener('pointermove', (e) => {
-    if (roam!.mode !== 'orbit') { renderer.domElement.style.cursor = ''; return; }
     renderer.domElement.style.cursor = pickAt(e.clientX, e.clientY) ? 'pointer' : '';
   });
 
-  // —— 交互:漫游模式 ——
+  // —— 交互:镜头定位飞行动画 ——
   function flyTo(pos: THREE.Vector3, target: THREE.Vector3) {
     fly = { pos, target, t: 0 };
   }
-  roam = new RoamController(camera, controls, renderer.domElement, () => setMode('orbit'));
-  void roam;
-  const MODE_LABEL: Record<RoamMode, string> = { orbit: '自动巡游', tour: '步行模式', walk: '退出漫游' };
-  function setMode(m: RoamMode) {
-    roam!.setMode(m);
-    modeBtn.textContent = MODE_LABEL[m];
-    modeHint.style.display = m === 'walk' ? 'block' : 'none';
-    if (m !== 'orbit') clearSelection();
-  }
-  modeBtn.addEventListener('click', () => {
-    setMode(roam!.mode === 'orbit' ? 'tour' : roam!.mode === 'tour' ? 'walk' : 'orbit');
-  });
-  modeBtn.style.display = 'block';
 
   const labels = buildLabels(data);
   scene.add(labels);
 
-  labelsBtn.style.display = 'block';
-  labelsBtn.addEventListener('click', () => {
-    labels.visible = !labels.visible;
-    labelsBtn.textContent = labels.visible ? '隐藏标签' : '显示标签';
-  });
-
   layers = { groundGroup, green, pitch, water, roads, buildings, trees, labels };
   hideLoading();
-
-  // —— 编辑模式 ——
-  const editor = new ManualEditor(manual, camera, controls);
-  editor.setWalkModeProbe(() => roam?.mode === 'walk');
-  scene.add(editor.markerGroup);
-  editBtn.style.display = 'block';
-  editBtn.addEventListener('click', () => editor.toggle());
 }
 
 init().catch((err) => {
@@ -205,7 +170,6 @@ window.addEventListener('resize', () => {
 renderer.setAnimationLoop((time) => {
   const dt = Math.min(0.05, (time - (lastTime ?? time)) / 1000);
   lastTime = time;
-  roam?.update(dt);
   if (fly) {
     fly.t = Math.min(1, fly.t + dt / 0.9);
     const k = fly.t * fly.t * (3 - 2 * fly.t);
@@ -213,8 +177,7 @@ renderer.setAnimationLoop((time) => {
     controls.target.lerp(fly.target, k * 0.25 + 0.02);
     if (fly.t >= 1) fly = null;
   }
-  // 巡游/步行模式下 OrbitControls 不更新,避免覆盖相机
-  if (!roam || roam.mode === 'orbit') controls.update();
+  controls.update();
   renderer.render(scene, camera);
   labelRenderer.render(scene, camera);
   if (layers.labels) updateLabels(layers.labels as THREE.Group, camera);

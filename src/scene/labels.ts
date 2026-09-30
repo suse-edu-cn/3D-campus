@@ -46,13 +46,6 @@ export function buildLabels(data: CampusData): THREE.Group {
   const group = new THREE.Group();
   group.name = 'labels';
 
-  // 校区名
-  const bound = data.boundary.find((f) => f.properties.is_suse);
-  if (bound) {
-    const [x, z] = centroid(bound as Feature<KindProps>);
-    addLabel(group, '四川轻化工大学宜宾校区', x, 30, z, 'map-label-campus');
-  }
-
   // 校区建筑(有名称的)
   for (const f of data.buildings) {
     const p = f.properties;

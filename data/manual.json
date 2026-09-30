@@ -149,7 +149,7 @@
   "buildings": [
     {
       "id": "hall-west",
-      "name": "西区室内场馆",
+      "name": "五粮液网球中心 A 区",
       "kind": "gym",
       "x": -494,
       "z": -6,
@@ -161,7 +161,7 @@
     },
     {
       "id": "hall-indoor",
-      "name": "网球场(室内)",
+      "name": "五粮液网球中心 B 区",
       "kind": "gym",
       "x": -279,
       "z": 169,
