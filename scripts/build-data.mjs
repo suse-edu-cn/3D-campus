@@ -46,6 +46,13 @@ const CENTER = {
   lat: +(((minLat + maxLat) / 2).toFixed(6)),
 };
 
+/** 校区边界 bbox 外扩 150m 的粗包围盒(过滤周边他校场地) */
+const CAMPUS_BBOX_MARGIN = 0.00135;
+function inCampusBBox(lon, lat) {
+  return lon >= minLon - CAMPUS_BBOX_MARGIN && lon <= maxLon + CAMPUS_BBOX_MARGIN &&
+         lat >= minLat - CAMPUS_BBOX_MARGIN && lat <= maxLat + CAMPUS_BBOX_MARGIN;
+}
+
 /** 射线法:点是否在校区边界内 */
 function inCampus(lon, lat) {
   let inside = false;
@@ -290,7 +297,11 @@ for (const f of gj.features) {
 
   // amenity=college 在本数据中用于标注 A 区教学楼建筑轮廓(而非 building=*)
   if ((p.building || p['building:part'] || p.amenity === 'college') && (geom.type === 'Polygon' || geom.type === 'MultiPolygon')) {
-    layers.buildings.push({ type: 'Feature', geometry: geom, properties: classifyBuilding(f) });
+    const props = classifyBuilding(f);
+    // 只保留四川轻化工大学宜宾校区内的建筑,周边邻校/城市建筑不渲染
+    if (props.campus === 'suse') {
+      layers.buildings.push({ type: 'Feature', geometry: geom, properties: props });
+    }
     continue;
   }
   if (p.highway && geom.type === 'LineString') {
@@ -322,7 +333,15 @@ for (const f of gj.features) {
       const area = polygonArea(geom);
       if (area > 10000) kind = 'track';
     }
-    if (cg) layers.pitch.push({ type: 'Feature', geometry: cg, properties: { kind, name: p.name } });
+    if (cg) {
+      const outer = cg.type === 'Polygon' ? cg.coordinates[0] : cg.coordinates[0][0];
+      let clon = 0, clat = 0;
+      for (const pt of outer) { clon += pt[0]; clat += pt[1]; }
+      clon /= outer.length; clat /= outer.length;
+      if (inCampusBBox(clon, clat)) {
+        layers.pitch.push({ type: 'Feature', geometry: cg, properties: { kind, name: p.name } });
+      }
+    }
     continue;
   }
   // 有名称的 sports_centre 视为场馆建筑(如"游泳馆 体育馆"未带 building 标签)

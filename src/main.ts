@@ -31,7 +31,7 @@ const labelRenderer = createLabelRenderer(app);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(PALETTE.bg);
-scene.fog = new THREE.Fog(PALETTE.bg, 2200, 5200);
+scene.fog = new THREE.Fog(PALETTE.bg, 1300, 2900);
 
 const camera = new THREE.PerspectiveCamera(
   55,
@@ -46,7 +46,7 @@ controls.enableDamping = true;
 controls.dampingFactor = 0.08;
 controls.maxPolarAngle = Math.PI / 2.1;
 controls.minDistance = 40;
-controls.maxDistance = 3200;
+controls.maxDistance = 2400;
 controls.target.set(0, 0, -120);
 
 const hemi = new THREE.HemisphereLight(0xdff3ff, 0x9db38a, 1.1);

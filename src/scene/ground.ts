@@ -8,8 +8,9 @@ import type { Feature, BoundaryProps } from '../data/loader';
 export function buildGround(boundaries: Feature<BoundaryProps>[]): THREE.Group {
   const group = new THREE.Group();
 
+  // 只保留校区周边范围,以外交给天空与雾
   const base = new THREE.Mesh(
-    new THREE.PlaneGeometry(4000, 4000),
+    new THREE.PlaneGeometry(2100, 2100),
     new THREE.MeshStandardMaterial({ color: PALETTE.groundContext, roughness: 1 }),
   );
   base.rotation.x = -Math.PI / 2;
