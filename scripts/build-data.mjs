@@ -66,6 +66,37 @@ function inCampus(lon, lat) {
   return inside;
 }
 
+// 邻校大学边界(西华大学/宜宾学院/成外/成理):落在其内的建筑一律不属于川轻化。
+// 防止 OSM 里邻校建筑与川轻化命名雷同(一教/研发楼/实验楼/静苑/育秀苑/一食堂
+// /实训厂房等均出现过)被 SUSE_NAME 误判进校区。
+const otherUniRings = gj.features
+  .filter(
+    (f) =>
+      f.properties.amenity === 'university' &&
+      f.id !== suseBoundary.id &&
+      (f.geometry?.type === 'Polygon' || f.geometry?.type === 'MultiPolygon'),
+  )
+  .flatMap((f) =>
+    f.geometry.type === 'Polygon'
+      ? [f.geometry.coordinates[0]]
+      : f.geometry.coordinates.map((poly) => poly[0]),
+  );
+
+function inOtherUni(lon, lat) {
+  for (const ring of otherUniRings) {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [xi, yi] = ring[i];
+      const [xj, yj] = ring[j];
+      if (yi > lat !== yj > lat && lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) {
+        inside = !inside;
+      }
+    }
+    if (inside) return true;
+  }
+  return false;
+}
+
 function centroid(f) {
   const ring =
     f.geometry.type === 'Polygon'
@@ -89,7 +120,7 @@ const KIND_PATTERNS = [
   [/^A\d|学院|^一教/, 'teaching'],
   [/综合楼|研发楼|勤工楼|励志楼/, 'office'],
 ];
-// 校区建筑命名模式(用于判定建筑归属,即便质心略在边界外)
+// 校区建筑命名模式(质心略在边界外时兜底;注意:落在邻校边界内的建筑不适用,见 inOtherUni)
 const SUSE_NAME = /A\d|^B\d|B1[0-4]|育秀苑|留学生|一教|一食堂|品正|令雅|器美|静苑|勤工楼|励志楼|科学会堂|综合楼|研发楼|实验楼|基础化学|工程实践|实训厂房|中试基地|酿酒|白酒学院|四川轻化工大学图书馆|游泳馆|体育馆/;
 
 const KIND_DEFAULTS = {
@@ -108,13 +139,7 @@ const KIND_DEFAULTS = {
 
 // 逐栋校准:OSM id 或名称精确匹配(层数/绝对高度/类别/简介)
 const OVERRIDES = {
-  'relation/9700404': { levels: 7, desc: '一号教学楼,校区最高教学建筑,7 层' },
-  'relation/9700405': { levels: 6, desc: '研发楼' },
-  'relation/9700406': { levels: 5, desc: '实验楼' },
-  'relation/9700407': { levels: 3, desc: '静苑(后勤服务)' },
   'way/738400645': { levels: 5, desc: '四川轻化工大学图书馆,位于校园中轴线北端' },
-  'way/723632029': { height: 12, desc: '实训厂房 B' },
-  'way/723632028': { height: 9, desc: '实训厂房 A' },
   'way/871558795': { levels: 2, floor: 5.5, desc: '工程实践中心' },
   'way/738400651': { levels: 2, floor: 5.5, desc: '工程实践中心' },
   'way/724835630': { kind: 'service', levels: 1 },
@@ -140,9 +165,12 @@ function classifyBuilding(f) {
   if (!kind) for (const [re, k] of KIND_PATTERNS) if (re.test(name)) { kind = k; break; }
   if (!kind) kind = p.building === 'dormitory' ? 'dormitory' : 'other';
 
+  const c = centroid(f);
   const campus =
     ov.campus ??
-    (SUSE_NAME.test(name) || inCampus(...(() => [centroid(f).lon, centroid(f).lat])()) ? 'suse' : 'other');
+    // 校区边界内 → 川轻化;邻校边界内 → 一律排除;
+    // 都不在时才允许按命名模式兜底(西华大学内有同名建筑,见 inOtherUni 注释)
+    (inCampus(c.lon, c.lat) || (!inOtherUni(c.lon, c.lat) && SUSE_NAME.test(name)) ? 'suse' : 'other');
 
   const def = KIND_DEFAULTS[kind];
   const levels = ov.levels ?? (p['building:levels'] ? +p['building:levels'] : def.levels);
@@ -297,8 +325,6 @@ for (const f of gj.features) {
 
   // amenity=college 在本数据中用于标注 A 区教学楼建筑轮廓(而非 building=*)
   if ((p.building || p['building:part'] || p.amenity === 'college') && (geom.type === 'Polygon' || geom.type === 'MultiPolygon')) {
-    // 实训厂房 A/B 实为西华大学建筑(用户实地指正),排除
-    if (f.id === 'way/723632028' || f.id === 'way/723632029') continue;
     const props = classifyBuilding(f);
     // 只保留四川轻化工大学宜宾校区内的建筑,周边邻校/城市建筑不渲染
     if (props.campus === 'suse') {
