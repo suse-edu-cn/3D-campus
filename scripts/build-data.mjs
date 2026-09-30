@@ -13,7 +13,7 @@
  *
  * 用法: npm run data:build
  */
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import osmtogeojson from 'osmtogeojson';
@@ -152,114 +152,15 @@ function classifyBuilding(f) {
   };
 }
 
-// ---------- 3.1 手工补充:OSM 缺失但实际存在的设施 ----------
-// 位置/尺寸/朝向由已对齐的卫星底图纹理实测(scripts/locate-features.mjs,PCA 主轴角)。
-// 坐标为局部米制(x 东 z 南)。grid: cols×rows 片场地,单格 bw×bd,场地 w×d。
-const MANUAL_PITCHES = [
-  {
-    kind: 'tennis', name: '五粮液国际网球中心A区',
-    grid: { cx: -392, cz: 3, cols: 3, rows: 2, bw: 37.3, bd: 20.5, w: 36, d: 19.5, rot: -46.3 },
-  },
-  {
-    kind: 'tennis', name: '五粮液国际网球中心北侧场',
-    grid: { cx: -422, cz: -83, cols: 1, rows: 1, bw: 26, bd: 15.5, w: 24, d: 14, rot: -45.4 },
-  },
-];
-
-const MANUAL_BUILDINGS = [
-  {
-    // 网球场西侧的大跨度场馆(卫星影像实测,标注图未单独命名)
-    name: '西区室内场馆', kind: 'gym',
-    x: -411, z: -45, w: 80, d: 38, rot: -48, height: 15, levels: 2,
-  },
-  {
-    // 官方标注图「网球场(室内)」:白色大屋顶场馆,位于室外球场群东南
-    name: '网球场(室内)', kind: 'gym',
-    x: -204, z: 202, w: 95, d: 48, rot: -45, height: 15, levels: 2,
-  },
-];
-
-// 中心广场(官方标注图黄色区域)+ 中轴步行道(虚线)
-const MANUAL_PLAZAS = [
-  {
-    name: '中心广场', kind: 'plaza',
-    ring: [[-41, -62], [186, -69], [201, 227], [-26, 234]],
-  },
-];
-const AXIS_WAYPOINTS = [
-  [2, -170], [47, -65],    // 北段:图书馆前
-  [109, 234], [173, 320], [224, 410], [264, 504], // 南段:广场 → 南门
-];
-
-// 手工道路:中轴步行道
-const MANUAL_ROADS = [
-  { cls: 'axis', waypoints: AXIS_WAYPOINTS },
-];
-
-// 校门:道路×边界交点(OSM 实测)+ 官方标注图命名,rot 为门楼朝向(度)
-// 顺序以南门为起点顺时针:南门 → 西大门 → 西门(外卖) → 东门 → 东南门
-// 东门位置来自标注图配准解算(原 OSM 交点偏了约 400m)
-const MANUAL_GATES = [
-  { name: '南门', x: 270, z: 510, rot: 0 },
-  { name: '西大门(学校正门)', x: -291, z: 372, rot: 40 },
-  { name: '西门(外卖/次要用出入口)', x: -325, z: 358, rot: 40 },
-  { name: '东门', x: 312, z: -491, rot: -40 },
-  { name: '东南门', x: 554, z: 155, rot: -75 },
-];
-
-function wgsFromLocal(x, z) {
-  return [
-    +(CENTER.lon + x / (111320 * Math.cos((CENTER.lat * Math.PI) / 180))).toFixed(6),
-    +(CENTER.lat - z / 110540).toFixed(6),
-  ];
-}
-
-/** 局部米制矩形(可旋转)→ 闭合 WGS 环 */
-function rectRing(x, z, w, d, rotDeg) {
-  const rot = (rotDeg * Math.PI) / 180;
-  const cos = Math.cos(rot), sin = Math.sin(rot);
-  const corners = [
-    [-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2],
-  ].map(([dx, dz]) => wgsFromLocal(x + dx * cos - dz * sin, z + dx * sin + dz * cos));
-  corners.push(corners[0]); // 闭合环
-  return corners;
-}
-
-function manualPitchFeatures() {
-  const features = [];
-  const push = (kind, name, x, z, w, d, rot) =>
-    features.push({
-      type: 'Feature',
-      geometry: { type: 'Polygon', coordinates: [rectRing(x, z, w, d, rot)] },
-      properties: { kind, name, manual: 1 },
-    });
-  for (const m of MANUAL_PITCHES) {
-    if (m.grid) {
-      const { cx, cz, cols, rows, bw, bd, w, d, rot } = m.grid;
-      const cos = Math.cos((rot * Math.PI) / 180), sin = Math.sin((rot * Math.PI) / 180);
-      for (let c = 0; c < cols; c++) {
-        for (let r = 0; r < rows; r++) {
-          const u = (c - (cols - 1) / 2) * bw;
-          const v = (r - (rows - 1) / 2) * bd;
-          push(m.kind, m.name, cx + u * cos - v * sin, cz + u * sin + v * cos, w, d, rot);
-        }
-      }
-    } else {
-      push(m.kind, m.name, m.x, m.z, m.w, m.d, m.rot);
-    }
-  }
-  return features;
-}
-
-function manualBuildingFeatures() {
-  return MANUAL_BUILDINGS.map((m) => ({
-    type: 'Feature',
-    geometry: { type: 'Polygon', coordinates: [rectRing(m.x, m.z, m.w, m.d, m.rot)] },
-    properties: {
-      osm_id: `manual/${m.name}`, name: m.name, campus: 'suse', kind: m.kind,
-      levels: m.levels, height_m: m.height, manual: 1,
-    },
-  }));
+// ---------- 3.1 手工设施:来源 data/manual.json(编辑模式可导出更新) ----------
+// 场景直接读取该文件构建校门/网球场/室内馆/广场/中轴步道,
+// 不再混入 GeoJSON 图层,便于在编辑模式中独立拖拽修改。
+let MANUAL = {
+  gates: [], pitches: [], buildings: [], plazas: [], roads: [],
+};
+const MANUAL_PATH = resolve(ROOT, 'data/manual.json');
+if (existsSync(MANUAL_PATH)) {
+  MANUAL = JSON.parse(readFileSync(MANUAL_PATH, 'utf8'));
 }
 
 // ---------- 4. 图层拆分 ----------
@@ -269,7 +170,6 @@ const layers = {
   water: [],
   green: [],
   pitch: [],
-  plaza: [],
   boundary: [],
   poi: [],
 };
@@ -445,34 +345,9 @@ for (const f of gj.features) {
 }
 
 // ---------- 5. 写文件 ----------
-layers.pitch.push(...manualPitchFeatures());
-layers.buildings.push(...manualBuildingFeatures());
-// 中心广场
-for (const p of MANUAL_PLAZAS) {
-  const ring = [...p.ring.map(([x, z]) => wgsFromLocal(x, z)), wgsFromLocal(...p.ring[0])];
-  layers.plaza.push({
-    type: 'Feature',
-    geometry: { type: 'Polygon', coordinates: [ring] },
-    properties: { kind: p.kind, name: p.name, manual: 1 },
-  });
-}
-// 中轴步行道 → 道路层(axis 类)
-for (const r of MANUAL_ROADS) {
-  layers.roads.push({
-    type: 'Feature',
-    geometry: { type: 'LineString', coordinates: r.waypoints.map(([x, z]) => wgsFromLocal(x, z)) },
-    properties: { cls: r.cls, highway: 'footway', name: '中轴步行道', manual: 1 },
-  });
-}
-for (const g of MANUAL_GATES) {
-  const [lon, lat] = wgsFromLocal(g.x, g.z);
-  layers.poi.push({
-    type: 'Feature',
-    geometry: { type: 'Point', coordinates: [lon, lat] },
-    properties: { name: g.name, kind: 'gate', campus: 'suse', rot: g.rot, manual: 1 },
-  });
-}
 mkdirSync(OUT_DIR, { recursive: true });
+// 手工设施清单同步给前端(编辑模式的数据源)
+writeFileSync(resolve(OUT_DIR, 'manual.json'), JSON.stringify(MANUAL));
 for (const [name, features] of Object.entries(layers)) {
   writeFileSync(resolve(OUT_DIR, `${name}.geojson`), JSON.stringify({ type: 'FeatureCollection', features }));
 }

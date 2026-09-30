@@ -21,11 +21,6 @@ export function buildWater(data: CampusData): THREE.Group {
   });
 }
 
-/** 广场(中心广场等):浅色铺装 */
-export function buildPlaza(data: CampusData): THREE.Group {
-  return buildFlatLayer(data.plaza, () => 0xdcd4a8, 0.1);
-}
-
 export function buildPitch(data: CampusData): THREE.Group {
   // 底层(跑道/围合区)与面层(球场/足球场)分开高度,避免同心面 z-fighting
   return buildFlatLayer(

@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { CSS2DObject, CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
 import { metersFromLonLat } from '../data/projection';
-import type { CampusData, Feature, PoiProps, BuildingProps, KindProps } from '../data/loader';
+import type { CampusData, Feature, BuildingProps, KindProps } from '../data/loader';
 
 export function createLabelRenderer(container: HTMLElement): CSS2DRenderer {
   const renderer = new CSS2DRenderer();
@@ -16,7 +16,7 @@ export function createLabelRenderer(container: HTMLElement): CSS2DRenderer {
   return renderer;
 }
 
-function centroid(f: Feature<BuildingProps | KindProps | PoiProps>): [number, number] {
+function centroid(f: Feature<BuildingProps | KindProps>): [number, number] {
   const g = f.geometry;
   let ring: number[][];
   if (g.type === 'Point') ring = [g.coordinates];
@@ -59,13 +59,6 @@ export function buildLabels(data: CampusData): THREE.Group {
     if (p.campus !== 'suse' || !p.name || p.height_m < 8) continue;
     const [x, z] = centroid(f as Feature<BuildingProps>);
     addLabel(group, p.name.length > 14 ? p.name.slice(0, 13) + '…' : p.name, x, p.height_m + 7, z, 'map-label-building');
-  }
-
-  // 校门
-  for (const f of data.poi) {
-    if (f.properties.kind !== 'gate') continue;
-    const [x, z] = centroid(f as Feature<PoiProps>);
-    addLabel(group, f.properties.name.replace(/\(.*\)/, ''), x, 14.5, z, 'map-label-gate');
   }
 
   // 水域名称

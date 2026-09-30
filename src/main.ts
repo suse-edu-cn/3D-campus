@@ -1,21 +1,22 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { PALETTE } from './scene/palette';
-import { loadCampusData } from './data/loader';
+import { loadCampusData, loadManual } from './data/loader';
+import { ManualFeatures } from './scene/manual';
+import { ManualEditor } from './ui/editor';
 import { buildGround } from './scene/ground';
-import { buildGreen, buildWater, buildPitch, buildPlaza } from './scene/layers';
+import { buildGreen, buildWater, buildPitch } from './scene/layers';
 import { buildRoads } from './scene/roads';
 import { buildBuildings } from './scene/buildings';
-import { buildGates } from './scene/gates';
 import { buildTrees } from './scene/trees';
 import { buildLabels, createLabelRenderer, updateLabels } from './scene/labels';
 import { InfoPanel } from './ui/infoPanel';
 import { RoamController, type RoamMode } from './ui/roam';
-
 const app = document.getElementById('app')!;
 const loadingEl = document.getElementById('loading')!;
 const labelsBtn = document.getElementById('labels-toggle') as HTMLButtonElement;
 const modeBtn = document.getElementById('mode-toggle') as HTMLButtonElement;
+const editBtn = document.getElementById('edit-toggle') as HTMLButtonElement;
 const modeHint = document.getElementById('mode-hint')!;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -76,19 +77,21 @@ async function init() {
 
   const groundGroup = buildGround(data.boundary);
   const green = buildGreen(data);
-  const plaza = buildPlaza(data);
   const pitch = buildPitch(data);
   const water = buildWater(data);
   const roads = buildRoads(data);
-  scene.add(groundGroup, green, plaza, pitch, water, roads);
+  scene.add(groundGroup, green, pitch, water, roads);
 
   const buildings = buildBuildings(data);
   scene.add(buildings);
 
-  const gates = buildGates(data);
-  scene.add(gates);
+  // 手工校准设施(校门/网球场/室内馆/广场/中轴步道)
+  const manualState = await loadManual();
+  const manual = new ManualFeatures(manualState);
+  scene.add(manual.group);
+  const manualPlazaRings = manualState.plazas.map((p) => p.ring);
 
-  const trees = buildTrees(data);
+  const trees = buildTrees(data, manualPlazaRings);
   scene.add(trees);
 
   // —— 交互:点击建筑信息面板 ——
@@ -97,7 +100,10 @@ async function init() {
   const pointer = new THREE.Vector2();
   let selected: THREE.Mesh | null = null;
   let savedMats: THREE.Material[] | null = null;
-  const buildingsMeshes = buildings.children.filter((c): c is THREE.Mesh => c instanceof THREE.Mesh);
+  const getPickMeshes = (): THREE.Mesh[] => [
+    ...(buildings.children.filter((c): c is THREE.Mesh => c instanceof THREE.Mesh)),
+    ...manual.buildingMeshes,
+  ];
 
   function clearSelection() {
     if (selected && savedMats) selected.material = savedMats;
@@ -117,7 +123,7 @@ async function init() {
   function pickAt(clientX: number, clientY: number): THREE.Mesh | null {
     pointer.set((clientX / window.innerWidth) * 2 - 1, -(clientY / window.innerHeight) * 2 + 1);
     raycaster.setFromCamera(pointer, camera);
-    const hits = raycaster.intersectObjects(buildingsMeshes, false);
+    const hits = raycaster.intersectObjects(getPickMeshes(), false);
     return hits.length && hits[0].object.userData.osm_id ? (hits[0].object as THREE.Mesh) : null;
   }
   let downX = 0, downY = 0;
@@ -173,8 +179,15 @@ async function init() {
     labelsBtn.textContent = labels.visible ? '隐藏标签' : '显示标签';
   });
 
-  layers = { groundGroup, green, plaza, pitch, water, roads, buildings, gates, trees, labels };
+  layers = { groundGroup, green, pitch, water, roads, buildings, trees, labels };
   hideLoading();
+
+  // —— 编辑模式 ——
+  const editor = new ManualEditor(manual, camera, controls);
+  editor.setWalkModeProbe(() => roam?.mode === 'walk');
+  scene.add(editor.markerGroup);
+  editBtn.style.display = 'block';
+  editBtn.addEventListener('click', () => editor.toggle());
 }
 
 init().catch((err) => {

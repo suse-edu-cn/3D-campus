@@ -192,6 +192,117 @@
       #info-fly:hover {
         background: #dcebf5;
       }
+      #editor-panel {
+        position: fixed;
+        left: 16px;
+        top: 64px;
+        width: 224px;
+        background: rgba(255, 255, 255, 0.96);
+        border-radius: 10px;
+        padding: 12px 14px;
+        z-index: 14;
+        box-shadow: 0 4px 18px rgba(20, 50, 80, 0.25);
+        font-size: 12px;
+        color: #2a415a;
+        display: none;
+      }
+      #editor-panel.hidden {
+        display: none;
+      }
+      #editor-panel:not(.hidden) {
+        display: block;
+      }
+      .ed-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #1d3d55;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 6px;
+      }
+      #ed-close {
+        border: none;
+        background: none;
+        font-size: 16px;
+        cursor: pointer;
+        color: #90a8bb;
+      }
+      #ed-name {
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: #a5382f;
+      }
+      .ed-field,
+      #editor-panel > label {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 2px 0;
+        gap: 8px;
+      }
+      .ed-field span {
+        color: #647c92;
+      }
+      #editor-panel input {
+        width: 84px;
+        padding: 3px 6px;
+        border: 1px solid #c9d6e0;
+        border-radius: 5px;
+        font-size: 12px;
+        color: #2a415a;
+      }
+      #editor-panel button {
+        cursor: pointer;
+      }
+      .ed-actions {
+        display: flex;
+        gap: 4px;
+        margin-top: 8px;
+      }
+      .ed-actions button,
+      #ed-delete {
+        flex: 1;
+        padding: 5px 2px;
+        border: 1px solid #c9d6e0;
+        border-radius: 6px;
+        background: #f2f8fc;
+        color: #2a5a80;
+        font-size: 11px;
+      }
+      #ed-delete {
+        margin-top: 8px;
+        width: 100%;
+      }
+      #ed-export {
+        margin-top: 8px;
+        width: 100%;
+        padding: 7px 0;
+        border: none;
+        border-radius: 7px;
+        background: #2e6e9e;
+        color: #fff;
+        font-size: 12px;
+        letter-spacing: 1px;
+      }
+      #ed-export:hover {
+        background: #2a628c;
+      }
+      .editor-marker {
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        background: #ff5a36;
+        border: 2.5px solid #fff;
+        box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+        pointer-events: auto;
+        cursor: move;
+      }
+      .editor-marker.selected {
+        background: #ffc23c;
+        width: 19px;
+        height: 19px;
+      }
       #mode-hint {
         position: fixed;
         bottom: 18px;
@@ -214,6 +325,22 @@
     <div class="title-bar">四川轻化工大学宜宾校区 · 3D 地图</div>
     <button id="labels-toggle" class="ui-toggle" type="button">隐藏标签</button>
     <button id="mode-toggle" class="ui-toggle" type="button" style="right: 104px;">自动巡游</button>
+    <button id="edit-toggle" class="ui-toggle" type="button" style="right: 208px;">编辑位置</button>
+    <div id="editor-panel" class="hidden">
+      <div class="ed-title">编辑设施位置 <button id="ed-close" type="button">×</button></div>
+      <div id="ed-name">(未选中)</div>
+      <label>X <input id="ed-x" type="number" step="1" /></label>
+      <label>Z <input id="ed-z" type="number" step="1" /></label>
+      <label>旋转° <input id="ed-rot" type="number" step="1" /></label>
+      <div id="ed-extra"></div>
+      <div class="ed-actions">
+        <button id="ed-add-gate" type="button">+校门</button>
+        <button id="ed-add-court" type="button">+球场</button>
+        <button id="ed-add-hall" type="button">+场馆</button>
+      </div>
+      <button id="ed-delete" type="button">删除选中设施</button>
+      <button id="ed-export" type="button">导出 manual.json(复制+下载)</button>
+    </div>
     <div id="info-panel" class="hidden">
       <button id="info-close" type="button">×</button>
       <h2 id="info-name"></h2>

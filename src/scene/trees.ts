@@ -36,17 +36,14 @@ function mulberry32(seed: number) {
 const DENSITY: Record<string, number> = { wood: 1 / 130, park: 1 / 380, grass: 1 / 850 };
 const MAX_TREES = 3200;
 
-export function buildTrees(data: CampusData): THREE.Group {
+export function buildTrees(data: CampusData, plazaRings: number[][][] = []): THREE.Group {
   const rng = mulberry32(20260930);
 
   // 禁止种树的区域:广场 + 球场(外环)
   const blocked: Pt[][] = [];
-  type PolyGeom = typeof data.plaza[number]['geometry'];
-  const asPolys = (g: PolyGeom): number[][][][] =>
+  for (const ring of plazaRings) blocked.push(ringToMeters(ring));
+  const asPolys = (g: CampusData['pitch'][number]['geometry']): number[][][][] =>
     g.type === 'Polygon' ? [g.coordinates as number[][][]] : (g.coordinates as number[][][][]);
-  for (const f of data.plaza) {
-    for (const rs of asPolys(f.geometry)) blocked.push(ringToMeters(rs[0]));
-  }
   for (const f of data.pitch) {
     for (const rs of asPolys(f.geometry)) blocked.push(ringToMeters(rs[0]));
   }

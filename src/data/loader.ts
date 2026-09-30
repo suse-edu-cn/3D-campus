@@ -65,21 +65,27 @@ export interface CampusData {
   water: Feature<KindProps>[];
   green: Feature<KindProps>[];
   pitch: Feature<KindProps>[];
-  plaza: Feature<KindProps>[];
   boundary: Feature<BoundaryProps>[];
   poi: Feature<PoiProps>[];
 }
 
+import type { ManualState } from '../scene/manual';
+
 export async function loadCampusData(): Promise<CampusData> {
-  const [buildings, roads, water, green, pitch, plaza, boundary, poi] = await Promise.all([
+  const [buildings, roads, water, green, pitch, boundary, poi] = await Promise.all([
     fetchLayer<BuildingProps>('buildings.geojson'),
     fetchLayer<RoadProps>('roads.geojson'),
     fetchLayer<KindProps>('water.geojson'),
     fetchLayer<KindProps>('green.geojson'),
     fetchLayer<KindProps>('pitch.geojson'),
-    fetchLayer<KindProps>('plaza.geojson'),
     fetchLayer<BoundaryProps>('boundary.geojson'),
     fetchLayer<PoiProps>('poi.geojson'),
   ]);
-  return { buildings, roads, water, green, pitch, plaza, boundary, poi };
+  return { buildings, roads, water, green, pitch, boundary, poi };
+}
+
+export async function loadManual(): Promise<ManualState> {
+  const res = await fetch('./data/manual.json');
+  if (!res.ok) throw new Error(`加载 manual.json 失败 (HTTP ${res.status})`);
+  return (await res.json()) as ManualState;
 }
