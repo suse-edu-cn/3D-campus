@@ -7,9 +7,12 @@ import { buildGreen, buildWater, buildPitch, buildPlaza } from './scene/layers';
 import { buildRoads } from './scene/roads';
 import { buildBuildings } from './scene/buildings';
 import { buildGates } from './scene/gates';
+import { buildTrees } from './scene/trees';
+import { buildLabels, createLabelRenderer, updateLabels } from './scene/labels';
 
 const app = document.getElementById('app')!;
 const loadingEl = document.getElementById('loading')!;
+const labelsBtn = document.getElementById('labels-toggle') as HTMLButtonElement;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -18,6 +21,8 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 app.appendChild(renderer.domElement);
+
+const labelRenderer = createLabelRenderer(app);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(PALETTE.bg);
@@ -76,7 +81,19 @@ async function init() {
   const gates = buildGates(data);
   scene.add(gates);
 
-  layers = { groundGroup, green, plaza, pitch, water, roads, buildings, gates };
+  const trees = buildTrees(data);
+  scene.add(trees);
+
+  const labels = buildLabels(data);
+  scene.add(labels);
+
+  labelsBtn.style.display = 'block';
+  labelsBtn.addEventListener('click', () => {
+    labels.visible = !labels.visible;
+    labelsBtn.textContent = labels.visible ? '隐藏标签' : '显示标签';
+  });
+
+  layers = { groundGroup, green, plaza, pitch, water, roads, buildings, gates, trees, labels };
   hideLoading();
 }
 
@@ -89,11 +106,14 @@ window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  labelRenderer.setSize(window.innerWidth, window.innerHeight);
 });
 
 renderer.setAnimationLoop(() => {
   controls.update();
   renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+  if (layers.labels) updateLabels(layers.labels as THREE.Group, camera);
 });
 
 // 调试/测试钩子:浏览器控制台或自动化脚本可调整相机

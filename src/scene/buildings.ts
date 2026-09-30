@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { polygonShapes } from './geo';
+import { getWindowTexture, scaleWallUVs } from './windows';
 import {
   WALL_COLORS,
   ROOF_COLORS,
@@ -22,7 +23,7 @@ function buildingMaterials(kind: string, campus: string): [THREE.MeshStandardMat
     const roof = suse ? (ROOF_COLORS[kind] ?? 0xa5a29a) : CONTEXT_ROOF;
     mats = [
       new THREE.MeshStandardMaterial({ color: roof, roughness: 0.9 }),
-      new THREE.MeshStandardMaterial({ color: wall, roughness: 0.85 }),
+      new THREE.MeshStandardMaterial({ color: wall, roughness: 0.85, map: getWindowTexture() }),
     ];
     matCache.set(key, mats);
   }
@@ -44,6 +45,7 @@ export function buildBuildings(data: CampusData): THREE.Group {
       try {
         const g = new THREE.ExtrudeGeometry(shape, { depth: p.height_m, bevelEnabled: false });
         g.rotateX(-Math.PI / 2);
+        scaleWallUVs(g);
         geoms.push(g);
       } catch {
         /* 跳过无法三角化的面 */
