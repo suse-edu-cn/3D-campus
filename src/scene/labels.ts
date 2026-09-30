@@ -29,8 +29,6 @@ function centroid(f: Feature<BuildingProps | KindProps>): [number, number] {
   return [x, z];
 }
 
-const entries: { obj: CSS2DObject; el: HTMLElement; base: number }[] = [];
-
 function addLabel(group: THREE.Group, text: string, x: number, y: number, z: number, cls: string) {
   const el = document.createElement('div');
   el.className = `map-label ${cls}`;
@@ -38,11 +36,9 @@ function addLabel(group: THREE.Group, text: string, x: number, y: number, z: num
   const obj = new CSS2DObject(el);
   obj.position.set(x, y, z);
   group.add(obj);
-  entries.push({ obj, el, base: 1 });
 }
 
 export function buildLabels(data: CampusData): THREE.Group {
-  entries.length = 0;
   const group = new THREE.Group();
   group.name = 'labels';
 
@@ -62,16 +58,4 @@ export function buildLabels(data: CampusData): THREE.Group {
   }
 
   return group;
-}
-
-/** 每帧调用:按距离淡出 */
-export function updateLabels(_group: THREE.Group, camera: THREE.Camera): void {
-  const cp = camera.position;
-  for (const { obj, el } of entries) {
-    if (!obj.visible) continue;
-    const d = obj.position.distanceTo(cp);
-    const fade = Math.min(1, Math.max(0, 1.35 - d / 1400));
-    el.style.opacity = fade.toFixed(2);
-    el.style.display = fade <= 0.02 ? 'none' : 'block';
-  }
 }

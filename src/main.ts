@@ -8,7 +8,7 @@ import { buildGreen, buildWater, buildPitch } from './scene/layers';
 import { buildRoads } from './scene/roads';
 import { buildBuildings } from './scene/buildings';
 import { buildTrees } from './scene/trees';
-import { buildLabels, createLabelRenderer, updateLabels } from './scene/labels';
+import { buildLabels, createLabelRenderer } from './scene/labels';
 import { InfoPanel } from './ui/infoPanel';
 const app = document.getElementById('app')!;
 const loadingEl = document.getElementById('loading')!;
@@ -180,7 +180,6 @@ renderer.setAnimationLoop((time) => {
   controls.update();
   renderer.render(scene, camera);
   labelRenderer.render(scene, camera);
-  if (layers.labels) updateLabels(layers.labels as THREE.Group, camera);
 });
 
 // 调试/测试钩子:浏览器控制台或自动化脚本可调整相机
