@@ -297,6 +297,8 @@ for (const f of gj.features) {
 
   // amenity=college 在本数据中用于标注 A 区教学楼建筑轮廓(而非 building=*)
   if ((p.building || p['building:part'] || p.amenity === 'college') && (geom.type === 'Polygon' || geom.type === 'MultiPolygon')) {
+    // 实训厂房 A/B 实为西华大学建筑(用户实地指正),排除
+    if (f.id === 'way/723632028' || f.id === 'way/723632029') continue;
     const props = classifyBuilding(f);
     // 只保留四川轻化工大学宜宾校区内的建筑,周边邻校/城市建筑不渲染
     if (props.campus === 'suse') {
