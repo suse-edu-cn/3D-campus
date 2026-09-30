@@ -55,8 +55,11 @@ export class ManualEditor {
   }
 
   private refreshMarkers(): void {
-    // 移除旧标记
-    for (const m of this.markers.values()) m.removeFromParent();
+    // 移除旧标记及其 DOM(防止拖拽/重选时残留)
+    for (const m of this.markers.values()) {
+      if (m.element.parentElement) m.element.parentElement.removeChild(m.element);
+      m.removeFromParent();
+    }
     this.markers.clear();
     const add = (id: string, label: string, pos: THREE.Vector3) => {
       const el = document.createElement('div');

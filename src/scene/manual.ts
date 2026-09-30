@@ -72,9 +72,19 @@ export class ManualFeatures {
     return c;
   }
 
+  /** 移除节点及其携带的 CSS2D 标签 DOM(否则残留幽灵标签) */
+  private disposeNode(node: THREE.Object3D): void {
+    node.traverse((o) => {
+      if (o instanceof CSS2DObject && o.element.parentElement) {
+        o.element.parentElement.removeChild(o.element);
+      }
+    });
+  }
+
   rebuild(id: string): void {
     const old = this.registry.get(id);
     if (old) {
+      this.disposeNode(old.node);
       this.group.remove(old.node);
       this.registry.delete(id);
     }
@@ -105,6 +115,7 @@ export class ManualFeatures {
   delete(id: string): void {
     const old = this.registry.get(id);
     if (old) {
+      this.disposeNode(old.node);
       this.group.remove(old.node);
       this.registry.delete(id);
     }
