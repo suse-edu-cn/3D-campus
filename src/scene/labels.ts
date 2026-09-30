@@ -70,7 +70,7 @@ export function updateLabels(_group: THREE.Group, camera: THREE.Camera): void {
   for (const { obj, el } of entries) {
     if (!obj.visible) continue;
     const d = obj.position.distanceTo(cp);
-    const fade = Math.min(1, Math.max(0, 1.25 - d / 1000));
+    const fade = Math.min(1, Math.max(0, 1.35 - d / 1400));
     el.style.opacity = fade.toFixed(2);
     el.style.display = fade <= 0.02 ? 'none' : 'block';
   }
