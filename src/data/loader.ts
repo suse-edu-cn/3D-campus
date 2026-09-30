@@ -69,25 +69,6 @@ export interface CampusData {
   poi: Feature<PoiProps>[];
 }
 
-export interface SatelliteMeta {
-  zoom: number;
-  bbox: { minLon: number; maxLon: number; minLat: number; maxLat: number };
-  width: number;
-  height: number;
-  mPerPx: number;
-}
-
-/** 卫星底图元信息(可选资源,缺失时回退低多边形地面) */
-export async function loadSatelliteMeta(): Promise<SatelliteMeta | null> {
-  try {
-    const res = await fetch('./assets/satellite-meta.json');
-    if (!res.ok) return null;
-    return (await res.json()) as SatelliteMeta;
-  } catch {
-    return null;
-  }
-}
-
 export async function loadCampusData(): Promise<CampusData> {
   const [buildings, roads, water, green, pitch, boundary, poi] = await Promise.all([
     fetchLayer<BuildingProps>('buildings.geojson'),

@@ -174,13 +174,13 @@ const MANUAL_BUILDINGS = [
 ];
 
 // 校门:道路×边界交点(OSM 实测)+ 官方标注图命名,rot 为门楼朝向(度)
+// 顺序以南门为起点顺时针:南门 → 西大门 → 西门(外卖) → 东门 → 东南门
 const MANUAL_GATES = [
+  { name: '南门', x: 270, z: 510, rot: 0 },
   { name: '西大门(学校正门)', x: -291, z: 372, rot: 40 },
   { name: '西门(外卖/次要用出入口)', x: -325, z: 358, rot: 40 },
   { name: '东门', x: 448, z: -117, rot: -50 },
   { name: '东南门', x: 554, z: 155, rot: -75 },
-  { name: '南门', x: 270, z: 510, rot: 0 },
-  { name: '南门(步行)', x: 10, z: 690, rot: 0 },
 ];
 
 function wgsFromLocal(x, z) {

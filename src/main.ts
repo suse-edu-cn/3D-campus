@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { PALETTE } from './scene/palette';
-import { loadCampusData, loadSatelliteMeta } from './data/loader';
-import { buildGround, buildSatelliteGround } from './scene/ground';
+import { loadCampusData } from './data/loader';
+import { buildGround } from './scene/ground';
 import { buildGreen, buildWater, buildPitch } from './scene/layers';
 import { buildRoads } from './scene/roads';
 import { buildBuildings } from './scene/buildings';
@@ -10,7 +10,6 @@ import { buildGates } from './scene/gates';
 
 const app = document.getElementById('app')!;
 const loadingEl = document.getElementById('loading')!;
-const styleBtn = document.getElementById('style-toggle') as HTMLButtonElement;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -63,7 +62,6 @@ let layers: Record<string, THREE.Object3D | null> = {};
 async function init() {
   const data = await loadCampusData();
 
-  // 低多边形矢量图层(道路/绿地/水体/球场在卫星模式下隐藏)
   const groundGroup = buildGround(data.boundary);
   const green = buildGreen(data);
   const pitch = buildPitch(data);
@@ -71,39 +69,13 @@ async function init() {
   const roads = buildRoads(data);
   scene.add(groundGroup, green, pitch, water, roads);
 
-  // 卫星底图(可选,缺失时回退纯低多边形)
-  const satMeta = await loadSatelliteMeta();
-  const satGround = satMeta
-    ? buildSatelliteGround(satMeta, renderer.capabilities.getMaxAnisotropy())
-    : null;
-  if (satGround) scene.add(satGround);
-
   const buildings = buildBuildings(data);
   scene.add(buildings);
 
   const gates = buildGates(data);
   scene.add(gates);
 
-  let mode: 'satellite' | 'lowpoly' = satGround ? 'satellite' : 'lowpoly';
-  function applyMode() {
-    const sat = mode === 'satellite' && satGround;
-    if (satGround) satGround.visible = !!sat;
-    // 卫星影像已包含道路/绿地/水体/球场,只叠加建筑
-    groundGroup.visible = !sat;
-    green.visible = !sat;
-    pitch.visible = !sat;
-    water.visible = !sat;
-    roads.visible = !sat;
-    styleBtn.textContent = mode === 'satellite' ? '切换低多边形' : '切换卫星底图';
-  }
-  styleBtn.style.display = satGround ? 'block' : 'none';
-  styleBtn.addEventListener('click', () => {
-    mode = mode === 'satellite' ? 'lowpoly' : 'satellite';
-    applyMode();
-  });
-  applyMode();
-
-  layers = { groundGroup, green, pitch, water, roads, satGround, buildings, gates };
+  layers = { groundGroup, green, pitch, water, roads, buildings, gates };
   hideLoading();
 }
 
