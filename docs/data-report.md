@@ -9,15 +9,21 @@
 | 图层 | 文件 | 要素数 | 大小 | 说明 |
 |---|---|---|---|---|
 | 建筑 | buildings.geojson | 37 | 16KB | 校区内 37 栋(邻校/城市建筑已全部排除,不渲染) |
-| 道路 | roads.geojson | 149 | 49KB | 已裁剪到校区周边 300m;major/minor/path 三级 |
-| 水域 | water.geojson | 7 | 20KB | 醉泉湖、育秀湖、白沙溪等 |
-| 绿地 | green.geojson | 12 | 34KB | 草地/林地/公园(树木散布数据源) |
-| 运动场 | pitch.geojson | 34 | 15KB | 篮球/足球/网球/羽毛球/田径等(含 2 处手工补充) |
+| 道路 | roads.geojson | 68 | 23KB | 校区内道路(major/minor/path 三级;城市/邻校道路不渲染) |
+| 水域 | water.geojson | 1 | 1KB | 醉泉湖(邻校育秀湖及周边水塘不渲染) |
+| 绿地 | green.geojson | 7 | 3KB | 校区内草地/林地/公园(树木散布数据源) |
+| 运动场 | pitch.geojson | 12 | 4KB | 校区内篮球/足球/网球/羽毛球/田径等 |
 | 边界 | boundary.geojson | 5 | 4KB | 川轻化宜宾校区 + 西华/成理/宜院/成外 |
 | POI | poi.geojson | 36 | 6KB | 公交站/商铺/设施 |
 | 元信息 | meta.json | — | — | 中心点(104.668727, 28.808876)、校区 bbox |
 
-> **手工补充设施**:OSM 缺失、经高德 POI(`scripts/amap-check.mjs`)与官方示意图核实的五粮液国际网球中心 A 区/B 区,以 `manual: 1` 标记,坐标在 `scripts/build-data.mjs` 的 `MANUAL_PITCHES` 中维护。
+> **归属过滤规则**:建筑/道路/水域/绿地/运动场统一按质心是否落在川轻化校区边界内过滤;
+> 另有 `inOtherUni` 兜底——邻校边界(西华大学等)内的要素一律排除,防止 OSM 中邻校要素
+> 与川轻化命名雷同而被误保留(西华片区曾出现一教/研发楼/育秀苑等同名建筑)。
+
+> **手工补充设施**:五粮液国际网球中心 A 区/B 区等 OSM 缺失设施,经高德 POI
+> (`scripts/amap-check.mjs`)与官方示意图核实,坐标在 `data/manual.json` 中维护,
+> 场景由 `src/scene/manual.ts` 直接读取渲染。
 
 > **邻校排除**:西华大学宜宾校区边界内的建筑一律不渲染。OSM 中该片区部分建筑名称与川轻化雷同(一教/研发楼/实验楼/静苑/育秀苑/一食堂/实训厂房 A·B),已由 `scripts/build-data.mjs` 的 `inOtherUni` 邻校边界判定统一排除,不依赖逐栋硬编码。
 

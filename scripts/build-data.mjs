@@ -46,13 +46,6 @@ const CENTER = {
   lat: +(((minLat + maxLat) / 2).toFixed(6)),
 };
 
-/** 校区边界 bbox 外扩 150m 的粗包围盒(过滤周边他校场地) */
-const CAMPUS_BBOX_MARGIN = 0.00135;
-function inCampusBBox(lon, lat) {
-  return lon >= minLon - CAMPUS_BBOX_MARGIN && lon <= maxLon + CAMPUS_BBOX_MARGIN &&
-         lat >= minLat - CAMPUS_BBOX_MARGIN && lat <= maxLat + CAMPUS_BBOX_MARGIN;
-}
-
 /** 射线法:点是否在校区边界内 */
 function inCampus(lon, lat) {
   let inside = false;
@@ -95,6 +88,13 @@ function inOtherUni(lon, lat) {
     if (inside) return true;
   }
   return false;
+}
+
+/** 环/折线的坐标均值质心是否落在川轻化校区边界内(道路/水域/绿地/球场的归属过滤) */
+function centroidInCampus(ring) {
+  let lon = 0, lat = 0;
+  for (const p of ring) { lon += p[0]; lat += p[1]; }
+  return inCampus(lon / ring.length, lat / ring.length);
 }
 
 function centroid(f) {
@@ -337,6 +337,8 @@ for (const f of gj.features) {
     if (cls) {
       const props = { cls, highway: p.highway, name: p.name, tunnel: p.tunnel ? 1 : undefined, bridge: p.bridge ? 1 : undefined };
       for (const run of clipLineToBBox(geom.coordinates)) {
+        // 只保留校区内的道路(含校门衔接段),周边城市/邻校道路不渲染
+        if (!centroidInCampus(run)) continue;
         layers.roads.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: run }, properties: { ...props } });
       }
     }
@@ -344,12 +346,18 @@ for (const f of gj.features) {
   }
   if (p.natural === 'water' && (geom.type === 'Polygon' || geom.type === 'MultiPolygon')) {
     const cg = clippedGeom(geom);
-    if (cg) layers.water.push({ type: 'Feature', geometry: cg, properties: { name: p.name } });
+    if (!cg) continue;
+    const outer = cg.type === 'Polygon' ? cg.coordinates[0] : cg.coordinates[0][0];
+    // 只保留校区内水域(醉泉湖/翠湖等),邻校育秀湖及周边水塘不渲染
+    if (centroidInCampus(outer)) layers.water.push({ type: 'Feature', geometry: cg, properties: { name: p.name } });
     continue;
   }
   if ((p.landuse === 'grass' || p.natural === 'wood' || p.leisure === 'park' || p.leisure === 'garden') && (geom.type === 'Polygon' || geom.type === 'MultiPolygon')) {
     const cg = clippedGeom(geom);
-    if (cg) layers.green.push({ type: 'Feature', geometry: cg, properties: { kind: p.natural === 'wood' ? 'wood' : p.landuse === 'grass' ? 'grass' : 'park', name: p.name } });
+    if (!cg) continue;
+    const outer = cg.type === 'Polygon' ? cg.coordinates[0] : cg.coordinates[0][0];
+    // 只保留校区内绿地(树木散布数据源),邻校/城市绿地不渲染
+    if (centroidInCampus(outer)) layers.green.push({ type: 'Feature', geometry: cg, properties: { kind: p.natural === 'wood' ? 'wood' : p.landuse === 'grass' ? 'grass' : 'park', name: p.name } });
     continue;
   }
   if ((p.leisure === 'pitch' || p.leisure === 'track') && (geom.type === 'Polygon' || geom.type === 'MultiPolygon')) {
@@ -366,7 +374,7 @@ for (const f of gj.features) {
       let clon = 0, clat = 0;
       for (const pt of outer) { clon += pt[0]; clat += pt[1]; }
       clon /= outer.length; clat /= outer.length;
-      if (inCampusBBox(clon, clat)) {
+      if (inCampus(clon, clat)) {
         layers.pitch.push({ type: 'Feature', geometry: cg, properties: { kind, name: p.name } });
       }
     }
