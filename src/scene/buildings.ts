@@ -30,9 +30,29 @@ function buildingMaterials(kind: string, campus: string): [THREE.MeshStandardMat
   return mats;
 }
 
+/** 把 ExtrudeGeometry 按组拆成 盖面/侧壁 两个几何(用于无分组合并) */
+function splitCapWall(g: THREE.BufferGeometry): { cap: THREE.BufferGeometry; wall: THREE.BufferGeometry } {
+  const pos = g.getAttribute('position');
+  const norm = g.getAttribute('normal');
+  const uv = g.getAttribute('uv');
+  const mk = (grp: { start: number; count: number }) => {
+    const pg = new THREE.BufferGeometry();
+    const slice = (attr: THREE.BufferAttribute | THREE.InterleavedBufferAttribute, item: number) =>
+      Array.from(attr.array.slice(grp.start * item, (grp.start + grp.count) * item));
+    pg.setAttribute('position', new THREE.Float32BufferAttribute(slice(pos, 3), 3));
+    if (norm) pg.setAttribute('normal', new THREE.Float32BufferAttribute(slice(norm, 3), 3));
+    if (uv) pg.setAttribute('uv', new THREE.Float32BufferAttribute(slice(uv, 2), 2));
+    return pg;
+  };
+  const groups = g.groups;
+  // ExtrudeGeometry:组 0 = 盖面,组 1 = 侧壁(顶点区间连续)
+  return { cap: mk(groups.find((x) => x.materialIndex === 0) ?? groups[0]), wall: mk(groups.find((x) => x.materialIndex === 1) ?? groups[groups.length - 1]) };
+}
+
 export function buildBuildings(data: CampusData): THREE.Group {
   const group = new THREE.Group();
-  const contextGeoms: THREE.BufferGeometry[] = [];
+  const contextCaps: THREE.BufferGeometry[] = [];
+  const contextWalls: THREE.BufferGeometry[] = [];
 
   for (const f of data.buildings) {
     const p = f.properties;
@@ -63,14 +83,29 @@ export function buildBuildings(data: CampusData): THREE.Group {
         group.add(mesh);
       }
     } else {
-      contextGeoms.push(...geoms);
+      for (const g of geoms) {
+        const { cap, wall } = splitCapWall(g);
+        contextCaps.push(cap);
+        contextWalls.push(wall);
+      }
     }
   }
 
-  if (contextGeoms.length) {
-    const merged = mergeGeometries(contextGeoms, true);
+  // 周边(校区外)建筑:盖面/侧壁分别合并,避免 useGroups 打乱材质索引
+  const [ctxRoof, ctxWall] = buildingMaterials('other', 'other');
+  if (contextCaps.length) {
+    const merged = mergeGeometries(contextCaps);
     if (merged) {
-      const mesh = new THREE.Mesh(merged, buildingMaterials('other', 'other'));
+      const mesh = new THREE.Mesh(merged, ctxRoof);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      group.add(mesh);
+    }
+  }
+  if (contextWalls.length) {
+    const merged = mergeGeometries(contextWalls);
+    if (merged) {
+      const mesh = new THREE.Mesh(merged, ctxWall);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       group.add(mesh);

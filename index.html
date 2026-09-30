@@ -125,12 +125,103 @@
         letter-spacing: 2px;
         color: #1d3d55;
       }
+      #info-panel {
+        position: fixed;
+        right: 16px;
+        top: 64px;
+        width: 248px;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 10px;
+        padding: 14px 16px 12px;
+        z-index: 12;
+        box-shadow: 0 4px 18px rgba(20, 50, 80, 0.22);
+        font-size: 13px;
+        color: #2a415a;
+      }
+      #info-panel.hidden {
+        display: none;
+      }
+      #info-name {
+        font-size: 15px;
+        margin: 0 18px 8px 0;
+        color: #1d3d55;
+      }
+      #info-close {
+        position: absolute;
+        top: 8px;
+        right: 10px;
+        border: none;
+        background: none;
+        font-size: 17px;
+        line-height: 1;
+        cursor: pointer;
+        color: #90a8bb;
+      }
+      #info-close:hover {
+        color: #4a6a80;
+      }
+      .info-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 3px 0;
+        color: #647c92;
+      }
+      .info-row b {
+        color: #2a415a;
+        font-weight: 600;
+      }
+      #info-desc {
+        margin: 8px 0 0;
+        padding-top: 8px;
+        border-top: 1px dashed #c9d6e0;
+        line-height: 1.55;
+        color: #50687e;
+      }
+      #info-fly {
+        margin-top: 10px;
+        width: 100%;
+        padding: 7px 0;
+        border: 1px solid #bcd0dd;
+        border-radius: 7px;
+        background: #eaf3f9;
+        color: #2a5a80;
+        font-size: 12px;
+        letter-spacing: 1px;
+        cursor: pointer;
+      }
+      #info-fly:hover {
+        background: #dcebf5;
+      }
+      #mode-hint {
+        position: fixed;
+        bottom: 18px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 12;
+        padding: 7px 16px;
+        border-radius: 16px;
+        background: rgba(20, 45, 70, 0.72);
+        color: #fff;
+        font-size: 12px;
+        letter-spacing: 1px;
+        display: none;
+        backdrop-filter: blur(4px);
+      }
     </style>
   </head>
   <body>
     <div id="app"></div>
     <div class="title-bar">四川轻化工大学宜宾校区 · 3D 地图</div>
     <button id="labels-toggle" class="ui-toggle" type="button">隐藏标签</button>
+    <button id="mode-toggle" class="ui-toggle" type="button" style="right: 104px;">自动巡游</button>
+    <div id="info-panel" class="hidden">
+      <button id="info-close" type="button">×</button>
+      <h2 id="info-name"></h2>
+      <div id="info-rows"></div>
+      <p id="info-desc"></p>
+      <button id="info-fly" type="button">镜 头 定 位</button>
+    </div>
+    <div id="mode-hint">步行模式:WASD / 方向键移动 · Shift 加速 · 按住拖动转头 · ESC 退出</div>
     <div id="loading">
       <div class="spinner"></div>
       <div class="loading-text">正在加载校园数据…</div>
