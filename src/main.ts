@@ -83,3 +83,6 @@ renderer.setAnimationLoop(() => {
   controls.update();
   renderer.render(scene, camera);
 });
+
+// 调试/测试钩子:浏览器控制台或自动化脚本可调整相机
+window.__cam = { camera, controls, scene };

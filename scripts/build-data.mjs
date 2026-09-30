@@ -152,6 +152,38 @@ function classifyBuilding(f) {
   };
 }
 
+// ---------- 3.1 手工补充:OSM 缺失但实际存在的设施 ----------
+// 来源:高德 POI 校验(scripts/amap-check.mjs)+ 官方 2.5D 示意图。坐标为局部米制(x 东 z 南)。
+const MANUAL_PITCHES = [
+  { kind: 'tennis', name: '五粮液国际网球中心A区', x: -495, z: -16, w: 56, d: 22, rot: -11 },
+  { kind: 'tennis', name: '五粮液国际网球中心B区', x: -252, z: 186, w: 38, d: 22, rot: -11 },
+];
+
+function wgsFromLocal(x, z) {
+  return [
+    +(CENTER.lon + x / (111320 * Math.cos((CENTER.lat * Math.PI) / 180))).toFixed(6),
+    +(CENTER.lat - z / 110540).toFixed(6),
+  ];
+}
+
+function manualPitchFeatures() {
+  const features = [];
+  for (const m of MANUAL_PITCHES) {
+    const rot = (m.rot * Math.PI) / 180;
+    const cos = Math.cos(rot), sin = Math.sin(rot);
+    const corners = [
+      [-m.w / 2, -m.d / 2], [m.w / 2, -m.d / 2], [m.w / 2, m.d / 2], [-m.w / 2, m.d / 2],
+    ].map(([dx, dz]) => wgsFromLocal(m.x + dx * cos - dz * sin, m.z + dx * sin + dz * cos));
+    corners.push(corners[0]); // 闭合环
+    features.push({
+      type: 'Feature',
+      geometry: { type: 'Polygon', coordinates: [corners] },
+      properties: { kind: m.kind, name: m.name, manual: 1 },
+    });
+  }
+  return features;
+}
+
 // ---------- 4. 图层拆分 ----------
 const layers = {
   buildings: [],
@@ -334,6 +366,7 @@ for (const f of gj.features) {
 }
 
 // ---------- 5. 写文件 ----------
+layers.pitch.push(...manualPitchFeatures());
 mkdirSync(OUT_DIR, { recursive: true });
 for (const [name, features] of Object.entries(layers)) {
   writeFileSync(resolve(OUT_DIR, `${name}.geojson`), JSON.stringify({ type: 'FeatureCollection', features }));

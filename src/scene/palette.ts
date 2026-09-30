@@ -12,16 +12,16 @@ export const PALETTE = {
   roadPath: 0xc9bb9c,
 } as const;
 
-/** 运动场类型 → 颜色 */
+/** 运动场类型 → 颜色(取自 2.5D 示意图的高辨识度配色) */
 export const PITCH_COLORS: Record<string, number> = {
   track: 0xc05a4e,
   soccer: 0x4e9e4a,
   basketball: 0xc98d55,
-  tennis: 0x5f9e57,
-  badminton: 0x79ab60,
-  volleyball: 0x79ab60,
-  table_tennis: 0xa8a8a0,
-  multi: 0x79ab60,
+  tennis: 0x4a8fc4,
+  badminton: 0x58b0a0,
+  volleyball: 0x86b04f,
+  table_tennis: 0x9fc4e8,
+  multi: 0x8fbf6b,
 };
 
 /** 建筑类别 → 墙面/屋顶颜色(校区内) */
