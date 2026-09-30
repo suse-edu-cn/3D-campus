@@ -40,8 +40,10 @@ export function buildTrees(data: CampusData, plazaRings: number[][][] = []): THR
   const rng = mulberry32(20260930);
 
   // 禁止种树的区域:广场 + 球场(外环)
+  // 注意:广场环来自 manual.json,已是本地米制坐标,不能再做经纬度投影
+  // (此前误用 ringToMeters 会导致环膨胀为上万公里、全校被列为禁种区,树木为 0)
   const blocked: Pt[][] = [];
-  for (const ring of plazaRings) blocked.push(ringToMeters(ring));
+  for (const ring of plazaRings) blocked.push(ring as Pt[]);
   const asPolys = (g: CampusData['pitch'][number]['geometry']): number[][][][] =>
     g.type === 'Polygon' ? [g.coordinates as number[][][]] : (g.coordinates as number[][][][]);
   for (const f of data.pitch) {
