@@ -3,7 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { PALETTE } from './scene/palette';
 import { loadCampusData } from './data/loader';
 import { buildGround } from './scene/ground';
-import { buildGreen, buildWater, buildPitch } from './scene/layers';
+import { buildGreen, buildWater, buildPitch, buildPlaza } from './scene/layers';
 import { buildRoads } from './scene/roads';
 import { buildBuildings } from './scene/buildings';
 import { buildGates } from './scene/gates';
@@ -64,10 +64,11 @@ async function init() {
 
   const groundGroup = buildGround(data.boundary);
   const green = buildGreen(data);
+  const plaza = buildPlaza(data);
   const pitch = buildPitch(data);
   const water = buildWater(data);
   const roads = buildRoads(data);
-  scene.add(groundGroup, green, pitch, water, roads);
+  scene.add(groundGroup, green, plaza, pitch, water, roads);
 
   const buildings = buildBuildings(data);
   scene.add(buildings);
@@ -75,7 +76,7 @@ async function init() {
   const gates = buildGates(data);
   scene.add(gates);
 
-  layers = { groundGroup, green, pitch, water, roads, buildings, gates };
+  layers = { groundGroup, green, plaza, pitch, water, roads, buildings, gates };
   hideLoading();
 }
 

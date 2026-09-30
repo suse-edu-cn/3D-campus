@@ -65,19 +65,21 @@ export interface CampusData {
   water: Feature<KindProps>[];
   green: Feature<KindProps>[];
   pitch: Feature<KindProps>[];
+  plaza: Feature<KindProps>[];
   boundary: Feature<BoundaryProps>[];
   poi: Feature<PoiProps>[];
 }
 
 export async function loadCampusData(): Promise<CampusData> {
-  const [buildings, roads, water, green, pitch, boundary, poi] = await Promise.all([
+  const [buildings, roads, water, green, pitch, plaza, boundary, poi] = await Promise.all([
     fetchLayer<BuildingProps>('buildings.geojson'),
     fetchLayer<RoadProps>('roads.geojson'),
     fetchLayer<KindProps>('water.geojson'),
     fetchLayer<KindProps>('green.geojson'),
     fetchLayer<KindProps>('pitch.geojson'),
+    fetchLayer<KindProps>('plaza.geojson'),
     fetchLayer<BoundaryProps>('boundary.geojson'),
     fetchLayer<PoiProps>('poi.geojson'),
   ]);
-  return { buildings, roads, water, green, pitch, boundary, poi };
+  return { buildings, roads, water, green, pitch, plaza, boundary, poi };
 }

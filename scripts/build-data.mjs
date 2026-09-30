@@ -168,18 +168,42 @@ const MANUAL_PITCHES = [
 
 const MANUAL_BUILDINGS = [
   {
-    name: '五粮液国际网球中心室内馆', kind: 'gym',
+    // 网球场西侧的大跨度场馆(卫星影像实测,标注图未单独命名)
+    name: '西区室内场馆', kind: 'gym',
     x: -411, z: -45, w: 80, d: 38, rot: -48, height: 15, levels: 2,
   },
+  {
+    // 官方标注图「网球场(室内)」:白色大屋顶场馆,位于室外球场群东南
+    name: '网球场(室内)', kind: 'gym',
+    x: -204, z: 202, w: 95, d: 48, rot: -45, height: 15, levels: 2,
+  },
+];
+
+// 中心广场(官方标注图黄色区域)+ 中轴步行道(虚线)
+const MANUAL_PLAZAS = [
+  {
+    name: '中心广场', kind: 'plaza',
+    ring: [[-41, -62], [186, -69], [201, 227], [-26, 234]],
+  },
+];
+const AXIS_WAYPOINTS = [
+  [2, -170], [47, -65],    // 北段:图书馆前
+  [109, 234], [173, 320], [224, 410], [264, 504], // 南段:广场 → 南门
+];
+
+// 手工道路:中轴步行道
+const MANUAL_ROADS = [
+  { cls: 'axis', waypoints: AXIS_WAYPOINTS },
 ];
 
 // 校门:道路×边界交点(OSM 实测)+ 官方标注图命名,rot 为门楼朝向(度)
 // 顺序以南门为起点顺时针:南门 → 西大门 → 西门(外卖) → 东门 → 东南门
+// 东门位置来自标注图配准解算(原 OSM 交点偏了约 400m)
 const MANUAL_GATES = [
   { name: '南门', x: 270, z: 510, rot: 0 },
   { name: '西大门(学校正门)', x: -291, z: 372, rot: 40 },
   { name: '西门(外卖/次要用出入口)', x: -325, z: 358, rot: 40 },
-  { name: '东门', x: 448, z: -117, rot: -50 },
+  { name: '东门', x: 312, z: -491, rot: -40 },
   { name: '东南门', x: 554, z: 155, rot: -75 },
 ];
 
@@ -245,6 +269,7 @@ const layers = {
   water: [],
   green: [],
   pitch: [],
+  plaza: [],
   boundary: [],
   poi: [],
 };
@@ -422,6 +447,23 @@ for (const f of gj.features) {
 // ---------- 5. 写文件 ----------
 layers.pitch.push(...manualPitchFeatures());
 layers.buildings.push(...manualBuildingFeatures());
+// 中心广场
+for (const p of MANUAL_PLAZAS) {
+  const ring = [...p.ring.map(([x, z]) => wgsFromLocal(x, z)), wgsFromLocal(...p.ring[0])];
+  layers.plaza.push({
+    type: 'Feature',
+    geometry: { type: 'Polygon', coordinates: [ring] },
+    properties: { kind: p.kind, name: p.name, manual: 1 },
+  });
+}
+// 中轴步行道 → 道路层(axis 类)
+for (const r of MANUAL_ROADS) {
+  layers.roads.push({
+    type: 'Feature',
+    geometry: { type: 'LineString', coordinates: r.waypoints.map(([x, z]) => wgsFromLocal(x, z)) },
+    properties: { cls: r.cls, highway: 'footway', name: '中轴步行道', manual: 1 },
+  });
+}
 for (const g of MANUAL_GATES) {
   const [lon, lat] = wgsFromLocal(g.x, g.z);
   layers.poi.push({
