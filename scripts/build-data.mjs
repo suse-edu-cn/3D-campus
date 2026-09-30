@@ -90,7 +90,7 @@ const KIND_DEFAULTS = {
   dormitory: { levels: 6, floor: 3.3 },
   canteen:   { levels: 2, floor: 4.5 },
   library:   { levels: 5, floor: 5.0 },
-  gym:       { height: 13 },
+  gym:       { levels: 2, height: 13 },
   factory:   { levels: 1, height: 9 },
   lab:       { levels: 4, floor: 4.0 },
   hall:      { levels: 3, floor: 4.5 },
@@ -139,8 +139,7 @@ function classifyBuilding(f) {
 
   const def = KIND_DEFAULTS[kind];
   const levels = ov.levels ?? (p['building:levels'] ? +p['building:levels'] : def.levels);
-  const floorH = ov.floor ?? def.floor;
-  const height = ov.height ?? +(levels * floorH).toFixed(1);
+  const height = ov.height ?? def.height ?? +(levels * (ov.floor ?? def.floor)).toFixed(1);
 
   return {
     osm_id: f.id,
@@ -185,6 +184,78 @@ function clipLineToBBox(coords) {
   return runs;
 }
 
+// Sutherland–Hodgman 多边形裁剪(对矩形凸裁剪窗),用于把超大面积的公园/林地面裁到周边范围
+const CLIP_EDGES = [
+  { axis: 0, limit: roadBBox.minLon, keep: (v, l) => v >= l },
+  { axis: 0, limit: roadBBox.maxLon, keep: (v, l) => v <= l },
+  { axis: 1, limit: roadBBox.minLat, keep: (v, l) => v >= l },
+  { axis: 1, limit: roadBBox.maxLat, keep: (v, l) => v <= l },
+];
+
+function clipRingToBBox(ring) {
+  let poly = ring;
+  for (const { axis, limit, keep } of CLIP_EDGES) {
+    const out = [];
+    for (let i = 0; i < poly.length; i++) {
+      const cur = poly[i];
+      const prev = poly[(i + poly.length - 1) % poly.length];
+      const ci = keep(cur[axis], limit);
+      const pi = keep(prev[axis], limit);
+      const cross = () => {
+        const t = (limit - prev[axis]) / (cur[axis] - prev[axis]);
+        return [prev[0] + (cur[0] - prev[0]) * t, prev[1] + (cur[1] - prev[1]) * t];
+      };
+      if (ci) {
+        if (!pi) out.push(cross());
+        out.push(cur);
+      } else if (pi) {
+        out.push(cross());
+      }
+    }
+    poly = out;
+    if (poly.length < 3) return [];
+  }
+  return poly;
+}
+
+/** 裁剪 Polygon/MultiPolygon 到周边 bbox,返回裁剪后的 Polygon 数组(外环+内环) */
+function clipPolygonGeometry(geom) {
+  const polys = geom.type === 'Polygon' ? [geom.coordinates] : geom.type === 'MultiPolygon' ? geom.coordinates : [];
+  const outPolys = [];
+  for (const rings of polys) {
+    const outer = clipRingToBBox(rings[0]);
+    if (outer.length < 3) continue;
+    const clipped = [outer];
+    for (let i = 1; i < rings.length; i++) {
+      const hole = clipRingToBBox(rings[i]);
+      if (hole.length >= 3) clipped.push(hole);
+    }
+    outPolys.push(clipped);
+  }
+  return outPolys;
+}
+
+function clippedGeom(geom) {
+  const polys = clipPolygonGeometry(geom);
+  if (!polys.length) return null;
+  return polys.length === 1
+    ? { type: 'Polygon', coordinates: polys[0] }
+    : { type: 'MultiPolygon', coordinates: polys };
+}
+
+/** 多边形球面面积近似(平方米),用于大场地面判定 */
+function polygonArea(geom) {
+  const polys = geom.type === 'Polygon' ? [geom.coordinates] : geom.coordinates;
+  let total = 0;
+  for (const rings of polys) {
+    const r = rings[0];
+    let a = 0;
+    for (let i = 0; i < r.length - 1; i++) a += r[i][0] * r[i + 1][1] - r[i + 1][0] * r[i][1];
+    total += Math.abs(a / 2) * 111320 * 110540 * Math.cos((CENTER.lat * Math.PI) / 180);
+  }
+  return total;
+}
+
 const ROAD_CLASS = {
   major: ['primary', 'secondary', 'tertiary', 'trunk', 'primary_link', 'secondary_link', 'tertiary_link', 'trunk_link'],
   minor: ['residential', 'unclassified', 'service', 'living_street'],
@@ -222,16 +293,35 @@ for (const f of gj.features) {
     continue;
   }
   if (p.natural === 'water' && (geom.type === 'Polygon' || geom.type === 'MultiPolygon')) {
-    layers.water.push({ type: 'Feature', geometry: geom, properties: { name: p.name } });
+    const cg = clippedGeom(geom);
+    if (cg) layers.water.push({ type: 'Feature', geometry: cg, properties: { name: p.name } });
     continue;
   }
   if ((p.landuse === 'grass' || p.natural === 'wood' || p.leisure === 'park' || p.leisure === 'garden') && (geom.type === 'Polygon' || geom.type === 'MultiPolygon')) {
-    layers.green.push({ type: 'Feature', geometry: geom, properties: { kind: p.natural === 'wood' ? 'wood' : p.landuse === 'grass' ? 'grass' : 'park', name: p.name } });
+    const cg = clippedGeom(geom);
+    if (cg) layers.green.push({ type: 'Feature', geometry: cg, properties: { kind: p.natural === 'wood' ? 'wood' : p.landuse === 'grass' ? 'grass' : 'park', name: p.name } });
     continue;
   }
-  if ((p.leisure === 'pitch' || p.leisure === 'track' || p.leisure === 'sports_centre') && (geom.type === 'Polygon' || geom.type === 'MultiPolygon')) {
+  if ((p.leisure === 'pitch' || p.leisure === 'track') && (geom.type === 'Polygon' || geom.type === 'MultiPolygon')) {
     const sport = Array.isArray(p.sport) ? p.sport[0] : p.sport;
-    layers.pitch.push({ type: 'Feature', geometry: geom, properties: { kind: PITCH_KIND[sport] || (p.leisure === 'track' ? 'track' : 'multi'), name: p.name } });
+    const cg = clippedGeom(geom);
+    // 田径场围合区(无 sport 标签的大面积 multi 面)按跑道渲染
+    let kind = PITCH_KIND[sport] || (p.leisure === 'track' ? 'track' : 'multi');
+    if (kind === 'multi') {
+      const area = polygonArea(geom);
+      if (area > 10000) kind = 'track';
+    }
+    if (cg) layers.pitch.push({ type: 'Feature', geometry: cg, properties: { kind, name: p.name } });
+    continue;
+  }
+  // 有名称的 sports_centre 视为场馆建筑(如"游泳馆 体育馆"未带 building 标签)
+  if (p.leisure === 'sports_centre' && p.name && (geom.type === 'Polygon' || geom.type === 'MultiPolygon')) {
+    layers.buildings.push({ type: 'Feature', geometry: geom, properties: classifyBuilding(f) });
+    continue;
+  }
+  if (p.leisure === 'sports_centre' && (geom.type === 'Polygon' || geom.type === 'MultiPolygon')) {
+    const cg = clippedGeom(geom);
+    if (cg) layers.pitch.push({ type: 'Feature', geometry: cg, properties: { kind: 'multi', name: p.name } });
     continue;
   }
   if (p.amenity === 'university' && (geom.type === 'Polygon' || geom.type === 'MultiPolygon')) {

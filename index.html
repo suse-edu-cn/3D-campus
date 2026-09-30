@@ -45,11 +45,47 @@
         pointer-events: none;
         z-index: 10;
       }
+      #loading {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        align-items: center;
+        justify-content: center;
+        background: #aee3f5;
+        z-index: 20;
+        transition: opacity 0.5s;
+        font-size: 15px;
+        color: #4a6a80;
+        letter-spacing: 2px;
+      }
+      #loading.done {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .spinner {
+        width: 36px;
+        height: 36px;
+        border: 3px solid rgba(74, 106, 128, 0.25);
+        border-top-color: #4a6a80;
+        border-radius: 50%;
+        animation: spin 0.9s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
     </style>
   </head>
   <body>
     <div id="app"></div>
     <div class="title-bar">四川轻化工大学宜宾校区 · 3D 地图</div>
+    <div id="loading">
+      <div class="spinner"></div>
+      <div class="loading-text">正在加载校园数据…</div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
