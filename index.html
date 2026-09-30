@@ -77,11 +77,31 @@
           transform: rotate(360deg);
         }
       }
+      #style-toggle {
+        position: fixed;
+        top: 14px;
+        right: 14px;
+        z-index: 15;
+        padding: 8px 14px;
+        font-size: 13px;
+        letter-spacing: 1px;
+        color: #fff;
+        background: rgba(30, 60, 90, 0.72);
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        border-radius: 18px;
+        cursor: pointer;
+        backdrop-filter: blur(4px);
+        display: none;
+      }
+      #style-toggle:hover {
+        background: rgba(30, 60, 90, 0.9);
+      }
     </style>
   </head>
   <body>
     <div id="app"></div>
     <div class="title-bar">四川轻化工大学宜宾校区 · 3D 地图</div>
+    <button id="style-toggle" type="button">切换低多边形</button>
     <div id="loading">
       <div class="spinner"></div>
       <div class="loading-text">正在加载校园数据…</div>

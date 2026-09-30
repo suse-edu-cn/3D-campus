@@ -32,6 +32,7 @@ export interface PoiProps {
   name: string;
   kind: string;
   campus: 'suse' | 'other';
+  rot?: number;
 }
 
 export type Geometry =
@@ -66,6 +67,25 @@ export interface CampusData {
   pitch: Feature<KindProps>[];
   boundary: Feature<BoundaryProps>[];
   poi: Feature<PoiProps>[];
+}
+
+export interface SatelliteMeta {
+  zoom: number;
+  bbox: { minLon: number; maxLon: number; minLat: number; maxLat: number };
+  width: number;
+  height: number;
+  mPerPx: number;
+}
+
+/** 卫星底图元信息(可选资源,缺失时回退低多边形地面) */
+export async function loadSatelliteMeta(): Promise<SatelliteMeta | null> {
+  try {
+    const res = await fetch('./assets/satellite-meta.json');
+    if (!res.ok) return null;
+    return (await res.json()) as SatelliteMeta;
+  } catch {
+    return null;
+  }
 }
 
 export async function loadCampusData(): Promise<CampusData> {

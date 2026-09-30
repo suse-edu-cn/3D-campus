@@ -153,25 +153,34 @@ function classifyBuilding(f) {
 }
 
 // ---------- 3.1 手工补充:OSM 缺失但实际存在的设施 ----------
-// 位置/尺寸/朝向来自高德卫星影像实测(scripts/detect-courts.mjs)+ 高德 POI 校验。
+// 位置/尺寸/朝向由已对齐的卫星底图纹理实测(scripts/locate-features.mjs,PCA 主轴角)。
 // 坐标为局部米制(x 东 z 南)。grid: cols×rows 片场地,单格 bw×bd,场地 w×d。
 const MANUAL_PITCHES = [
   {
     kind: 'tennis', name: '五粮液国际网球中心A区',
-    grid: { cx: -495, cz: -17, cols: 3, rows: 2, bw: 37.3, bd: 20.5, w: 36, d: 19.5, rot: -46 },
+    grid: { cx: -392, cz: 3, cols: 3, rows: 2, bw: 37.3, bd: 20.5, w: 36, d: 19.5, rot: -46.3 },
   },
   {
     kind: 'tennis', name: '五粮液国际网球中心北侧场',
-    grid: { cx: -525, cz: -102, cols: 1, rows: 2, bw: 26, bd: 15.5, w: 24, d: 14, rot: -46 },
+    grid: { cx: -422, cz: -83, cols: 1, rows: 1, bw: 26, bd: 15.5, w: 24, d: 14, rot: -45.4 },
   },
-  { kind: 'tennis', name: '五粮液国际网球中心B区', x: -234, z: 213, w: 24, d: 14, rot: 60 },
 ];
 
 const MANUAL_BUILDINGS = [
   {
     name: '五粮液国际网球中心室内馆', kind: 'gym',
-    x: -610, z: -51, w: 90, d: 56, rot: -9, height: 15, levels: 2,
+    x: -411, z: -45, w: 80, d: 38, rot: -48, height: 15, levels: 2,
   },
+];
+
+// 校门:道路×边界交点(OSM 实测)+ 官方标注图命名,rot 为门楼朝向(度)
+const MANUAL_GATES = [
+  { name: '西大门(学校正门)', x: -291, z: 372, rot: 40 },
+  { name: '西门(外卖/次要用出入口)', x: -325, z: 358, rot: 40 },
+  { name: '东门', x: 448, z: -117, rot: -50 },
+  { name: '东南门', x: 554, z: 155, rot: -75 },
+  { name: '南门', x: 270, z: 510, rot: 0 },
+  { name: '南门(步行)', x: 10, z: 690, rot: 0 },
 ];
 
 function wgsFromLocal(x, z) {
@@ -413,6 +422,14 @@ for (const f of gj.features) {
 // ---------- 5. 写文件 ----------
 layers.pitch.push(...manualPitchFeatures());
 layers.buildings.push(...manualBuildingFeatures());
+for (const g of MANUAL_GATES) {
+  const [lon, lat] = wgsFromLocal(g.x, g.z);
+  layers.poi.push({
+    type: 'Feature',
+    geometry: { type: 'Point', coordinates: [lon, lat] },
+    properties: { name: g.name, kind: 'gate', campus: 'suse', rot: g.rot, manual: 1 },
+  });
+}
 mkdirSync(OUT_DIR, { recursive: true });
 for (const [name, features] of Object.entries(layers)) {
   writeFileSync(resolve(OUT_DIR, `${name}.geojson`), JSON.stringify({ type: 'FeatureCollection', features }));

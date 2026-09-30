@@ -9,7 +9,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "data:fetch": "node scripts/fetch-osm.mjs",
-    "data:build": "node scripts/build-data.mjs"
+    "data:build": "node scripts/build-data.mjs",
+    "data:satellite": "node scripts/fetch-satellite.mjs"
   },
   "dependencies": {
     "three": "^0.186.1"
