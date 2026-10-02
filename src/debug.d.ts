@@ -8,5 +8,6 @@ declare global {
       scene: unknown;
       layers?: Record<string, unknown | null>;
     };
+    __editor?: unknown;
   }
 }

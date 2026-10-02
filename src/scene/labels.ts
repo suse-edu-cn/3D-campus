@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { CSS2DObject, CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
 import { metersFromLonLat } from '../data/projection';
 import type { CampusData, Feature, BuildingProps, KindProps } from '../data/loader';
+import type { LabelOverride } from './manual';
 
 export function createLabelRenderer(container: HTMLElement): CSS2DRenderer {
   const renderer = new CSS2DRenderer();
@@ -29,25 +30,37 @@ function centroid(f: Feature<BuildingProps | KindProps>): [number, number] {
   return [x, z];
 }
 
-function addLabel(group: THREE.Group, text: string, x: number, y: number, z: number, cls: string) {
+function makeLabel(text: string, x: number, y: number, z: number, cls: string): CSS2DObject {
   const el = document.createElement('div');
   el.className = `map-label ${cls}`;
   el.textContent = text;
   const obj = new CSS2DObject(el);
   obj.position.set(x, y, z);
-  group.add(obj);
+  return obj;
 }
 
-export function buildLabels(data: CampusData): THREE.Group {
+function addLabel(group: THREE.Group, text: string, x: number, y: number, z: number, cls: string) {
+  group.add(makeLabel(text, x, y, z, cls));
+}
+
+export function buildLabels(
+  data: CampusData,
+  labelOverrides: Record<string, LabelOverride> = {},
+): THREE.Group {
   const group = new THREE.Group();
   group.name = 'labels';
 
-  // 校区建筑(有名称的)
+  // 校区建筑(有名称的),应用标签覆盖(改名/偏移/隐藏)
   for (const f of data.buildings) {
     const p = f.properties;
     if (p.campus !== 'suse' || !p.name || p.height_m < 8) continue;
+    const ov: LabelOverride = labelOverrides[p.osm_id] ?? {};
+    if (ov.hidden) continue;
+    const displayName = ov.name ?? p.name;
     const [x, z] = centroid(f as Feature<BuildingProps>);
-    addLabel(group, p.name.length > 14 ? p.name.slice(0, 13) + '…' : p.name, x, p.height_m + 7, z, 'map-label-building');
+    const obj = makeLabel(displayName.length > 14 ? displayName.slice(0, 13) + '…' : displayName, x + (ov.dx ?? 0), p.height_m + 7 + (ov.dz ?? 0), z, 'map-label-building');
+    obj.userData.labelId = p.osm_id;
+    group.add(obj);
   }
 
   // 水域名称

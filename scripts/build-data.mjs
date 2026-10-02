@@ -334,8 +334,9 @@ function buildCampus(id, cfg) {
   for (const [name, features] of Object.entries(layers)) {
     writeFileSync(resolve(cfg.outDir, `${name}.geojson`), JSON.stringify({ type: 'FeatureCollection', features }));
   }
-  let manual = { gates: [], pitches: [], buildings: [], plazas: [], roads: [] };
-  if (existsSync(cfg.manual)) manual = JSON.parse(readFileSync(cfg.manual, 'utf8'));
+  let manual = { gates: [], pitches: [], buildings: [], plazas: [], roads: [], markers: [], labelOverrides: {} };
+  if (existsSync(cfg.manual)) manual = { ...manual, ...JSON.parse(readFileSync(cfg.manual, 'utf8')) };
+  manual.labelOverrides = manual.labelOverrides ?? {};
   writeFileSync(resolve(cfg.outDir, 'manual.json'), JSON.stringify(manual));
 
   const meta = {

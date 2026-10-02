@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { PALETTE } from './scene/palette';
-import { loadCampusData, loadManual, loadCampusRegistry, type CampusInfo } from './data/loader';
+import { loadCampusData, loadManual, loadCampusRegistry, type CampusInfo, type CampusData } from './data/loader';
 import { setProjectionCenter } from './data/projection';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { ManualFeatures } from './scene/manual';
@@ -71,6 +71,8 @@ let getPickMeshesList: () => THREE.Mesh[] = () => [];
 let pickMeshes: THREE.Mesh[] = [];
 let editor: ManualEditor | null = null;
 let currentManual: ManualFeatures | null = null;
+let currentData: CampusData | null = null;
+let currentMeta: { center: { lat: number; lon: number } } | null = null;
 let layers: Record<string, THREE.Object3D | null> = {};
 let fly: { pos: THREE.Vector3; target: THREE.Vector3; t: number } | null = null;
 let lastTime: number | null = null;
@@ -97,8 +99,10 @@ async function loadCampus(id: string): Promise<void> {
     campusRoot = null;
   }
 
-  setProjectionCenter((await (await fetch(`./data/${id}/meta.json`)).json()).center);
+  currentMeta = await (await fetch(`./data/${id}/meta.json`)).json();
+  setProjectionCenter(currentMeta!.center);
   const data = await loadCampusData(id);
+  currentData = data;
 
   campusRoot = new THREE.Group();
   const groundGroup = buildGround(data.boundary);
@@ -117,7 +121,7 @@ async function loadCampus(id: string): Promise<void> {
   currentManual = manual;
   campusRoot.add(manual.group);
   if (!editor) {
-    editor = new ManualEditor(() => currentManual!, camera, controls);
+    editor = new ManualEditor(() => currentManual!, () => currentData!, camera, controls);
     scene.add(editor.markerGroup);
     editBtn.style.display = 'block';
     editBtn.addEventListener('click', () => editor!.toggle());
@@ -129,8 +133,19 @@ async function loadCampus(id: string): Promise<void> {
   const trees = buildTrees(data, manualPlazaRings);
   campusRoot.add(trees);
 
-  const labels = buildLabels(data);
+  let labels = buildLabels(data, manualState.labelOverrides ?? {});
   campusRoot.add(labels);
+  const rebuildLabels = () => {
+    labels.traverse((o) => {
+      if (o instanceof CSS2DObject && o.element.parentElement) o.element.parentElement.removeChild(o.element);
+    });
+    campusRoot!.remove(labels);
+    labels = buildLabels(data, manualState.labelOverrides ?? {});
+    campusRoot!.add(labels);
+    layers.labels = labels;
+  };
+  editor.setMetaProvider(() => currentMeta!);
+  editor.onLabelOverridesChange = () => rebuildLabels();
 
   scene.add(campusRoot);
   layers = { groundGroup, green, pitch, water, roads, buildings, trees, labels };
@@ -257,3 +272,4 @@ renderer.setAnimationLoop((time) => {
 
 // 调试/测试钩子:浏览器控制台或自动化脚本可调整相机
 window.__cam = { camera, controls, scene, get layers() { return layers; } };
+window.__cam = { ...window.__cam, get __editor() { return editor; } };
