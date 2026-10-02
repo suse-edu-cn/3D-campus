@@ -54,9 +54,32 @@ const CAMPUS_CONFIG = {
     camera: { pos: [120, 480, 820], target: [0, 0, -120] },
     excludeIds: new Set(),
     overrides: {
-      'way/738400645': { levels: 5, desc: '四川轻化工大学图书馆,位于校园中轴线北端' },
-      'way/723632029': { height: 12, desc: '实训厂房 B' },
-      'way/723632028': { height: 9, desc: '实训厂房 A' },
+      // —— 命名以官方示意图为准 ——
+      'way/797032811': { name: '图书馆', levels: 5, floor: 5.6, desc: '图书馆(含综合楼),校区地标' },
+      'way/797032810': { name: '图书馆(附楼)', levels: 3, floor: 4.5 },
+      'way/797032812': { name: '', levels: 2 },
+      'way/797032833': { name: '雅韵楼(音乐学院)', levels: 5 },
+      'relation/11041600': { name: '尚美楼(美术学院)', levels: 5 },
+      'way/797032809': { name: '体育馆·游泳馆', kind: 'gym', height: 20 },
+      'way/797032806': { name: '南大门', kind: 'service', levels: 2 },
+      'way/797032803': { name: '德馨苑1#', kind: 'dormitory' },
+      'way/797032799': { name: '德馨苑2#', kind: 'dormitory' },
+      'way/797032797': { name: '德馨苑3#', kind: 'dormitory' },
+      'way/797032791': { name: '德馨苑4#', kind: 'dormitory' },
+      'way/797032793': { name: '德馨苑5#', kind: 'dormitory' },
+      'way/797032849': { name: '艺雅苑1#', kind: 'dormitory', levels: 11, floor: 3.6 },
+      'way/797032905': { name: '艺雅苑2#', kind: 'dormitory' },
+      'way/797032910': { name: '艺雅食府', kind: 'canteen' },
+      'way/797032788': { name: '德馨食府', kind: 'canteen' },
+      'way/797032786': { name: '后勤服务中心', kind: 'office' },
+      'relation/11041594': { name: '盐都大剧院(含音乐厅)', kind: 'hall', levels: 4, floor: 5.0 },
+      'relation/11041601': { name: '鸿远楼', kind: 'office', levels: 5 },
+      'way/797032832': { name: '尚艺馆', kind: 'teaching', levels: 2, floor: 4.5 },
+      'relation/11041599': { name: '敏行楼', kind: 'teaching', levels: 3, floor: 4.5 },
+      'relation/11041598': { name: '博学楼', kind: 'teaching', levels: 4, floor: 4.5 },
+      'way/797032824': { name: '博约楼', kind: 'teaching', levels: 4, floor: 4.5 },
+      'relation/11041596': { name: '清源楼', kind: 'teaching', levels: 3, floor: 4.5 },
+      'relation/11041597': { name: '远韵楼', kind: 'teaching', levels: 4, floor: 4.5 },
     },
   },
 };
@@ -211,7 +234,7 @@ function buildCampus(id, cfg) {
     const def = KIND_DEFAULTS[kind];
     const levels = ov.levels ?? (p['building:levels'] ? +p['building:levels'] : def.levels);
     const height = ov.height ?? def.height ?? +(levels * (ov.floor ?? def.floor)).toFixed(1);
-    return { osm_id: f.id, name: name || undefined, campus: 'suse', kind, levels, height_m: height, desc: ov.desc };
+    return { osm_id: f.id, name: ov.name ?? (name || undefined), campus: 'suse', kind, levels, height_m: height, desc: ov.desc };
   }
 
   const layers = { buildings: [], roads: [], water: [], green: [], pitch: [], boundary: [], poi: [] };

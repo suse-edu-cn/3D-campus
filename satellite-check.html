@@ -24,14 +24,16 @@
     </div>
     <div id="info"></div>
     <script type="module">
-      // URL 参数:z 缩放, cx/cz 局部米制中心(可省,默认校区中心)
+      // URL 参数:z 缩放, campus 校区, cx/cz 局部米制中心(可省,默认校区中心)
       const q = new URLSearchParams(location.search);
       const Z = +(q.get('z') || 17);
+      const CAMPUS = q.get('campus') || 'yibin';
       const CX = +(q.get('cx') || 0);
       const CZ = +(q.get('cz') || 0);
 
-      // ---- 常量(与 src/config.ts 同步) ----
-      const LAT0 = 28.808876, LON0 = 104.668727;
+      // ---- 校区中心(从 meta.json 读取) ----
+      const metaInfo = await (await fetch(`./data/${CAMPUS}/meta.json`)).json();
+      const LAT0 = metaInfo.center.lat, LON0 = metaInfo.center.lon;
       const MLAT = 110540, MLON = 111320 * Math.cos((LAT0 * Math.PI) / 180);
 
       // ---- GCJ-02 转换 ----
@@ -113,7 +115,7 @@
       }
 
       const res = await Promise.all(
-        ['buildings', 'pitch', 'boundary', 'poi'].map((n) => fetch(`./data/${n}.geojson`).then((r) => r.json())),
+        ['buildings', 'pitch', 'boundary', 'poi'].map((n) => fetch(`./data/${CAMPUS}/${n}.geojson`).then((r) => r.json())),
       );
       const [bld, pitch, bound, poi] = res;
 
@@ -140,11 +142,23 @@
       ctx.strokeStyle = '#ff00ff'; ctx.lineWidth = 2;
       for (const f of bound.features) { ring(ctx, f.geometry.coordinates[0]); ctx.stroke(); }
 
-      // 建筑轮廓
+      // 建筑轮廓 + 名称
       ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 1;
+      ctx.font = '11px sans-serif'; ctx.fillStyle = '#00ffff';
       for (const f of bld.features) {
         const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
         for (const rings of polys) { ring(ctx, rings[0]); ctx.stroke(); }
+        if (f.properties.name) {
+          const c = centroidOfFeature(f);
+          const [sx, sy] = px(c[0], c[1]);
+          ctx.fillText(f.properties.name, sx - ctx.measureText(f.properties.name).width / 2, sy);
+        }
+      }
+      function centroidOfFeature(f) {
+        const r = f.geometry.type === 'Polygon' ? f.geometry.coordinates[0] : f.geometry.coordinates[0][0];
+        let lon = 0, lat = 0;
+        for (const p of r) { lon += p[0]; lat += p[1]; }
+        return [lon / r.length, lat / r.length];
       }
 
       // 球场(半透明填充)
