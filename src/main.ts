@@ -5,7 +5,7 @@ import { loadCampusData, loadManual, loadCampusRegistry, type CampusInfo, type C
 import { setProjectionCenter } from './data/projection';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { ManualFeatures } from './scene/manual';
-import { ManualEditor } from './ui/editor';
+import { LabelEditor } from './ui/editor';
 import { buildGround } from './scene/ground';
 import { buildGreen, buildWater, buildPitch } from './scene/layers';
 import { buildRoads } from './scene/roads';
@@ -69,7 +69,8 @@ function hideLoading() {
 let clearSelectionRef: (() => void) | null = null;
 let getPickMeshesList: () => THREE.Mesh[] = () => [];
 let pickMeshes: THREE.Mesh[] = [];
-let editor: ManualEditor | null = null;
+let editor: LabelEditor | null = null;
+let labelsRef: THREE.Group | null = null;
 let currentManual: ManualFeatures | null = null;
 let currentData: CampusData | null = null;
 let currentMeta: { center: { lat: number; lon: number } } | null = null;
@@ -121,8 +122,8 @@ async function loadCampus(id: string): Promise<void> {
   currentManual = manual;
   campusRoot.add(manual.group);
   if (!editor) {
-    editor = new ManualEditor(() => currentManual!, () => currentData!, camera, controls);
-    scene.add(editor.markerGroup);
+    editor = new LabelEditor(() => currentManual!.state, () => currentData!, () => labelsRef, camera, controls);
+    scene.add(editor.markerLayerGroup);
     editBtn.style.display = 'block';
     editBtn.addEventListener('click', () => editor!.toggle());
   } else {
@@ -141,11 +142,14 @@ async function loadCampus(id: string): Promise<void> {
     });
     campusRoot!.remove(labels);
     labels = buildLabels(data, manualState.labelOverrides ?? {});
+    labelsRef = labels;
     campusRoot!.add(labels);
     layers.labels = labels;
   };
-  editor.setMetaProvider(() => currentMeta!);
-  editor.onLabelOverridesChange = () => rebuildLabels();
+  editor.onLabelOverridesChange = () => {
+    rebuildLabels();
+    editor!.attachDots();
+  };
 
   scene.add(campusRoot);
   layers = { groundGroup, green, pitch, water, roads, buildings, trees, labels };

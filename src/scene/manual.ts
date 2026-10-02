@@ -18,10 +18,8 @@ export interface ManualPlaza { id: string; name: string; kind: string; ring: [nu
 export interface ManualRoad { id: string; name: string; cls: string; waypoints: [number, number][] }
 export interface ManualMarker { id: string; name: string; x: number; z: number }
 export interface LabelOverride {
-  name?: string;   // 改名
-  dx?: number;     // 标签水平偏移(米)
-  dz?: number;     // 标签纵向偏移(米)
-  hidden?: boolean; // 隐藏标签
+  name?: string;    // 改名
+  hidden?: boolean; // 删除(隐藏)标签
 }
 export interface ManualState {
   gates: ManualGate[]; pitches: ManualPitch[]; buildings: ManualBuilding[];

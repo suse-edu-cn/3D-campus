@@ -58,7 +58,7 @@ export function buildLabels(
     if (ov.hidden) continue;
     const displayName = ov.name ?? p.name;
     const [x, z] = centroid(f as Feature<BuildingProps>);
-    const obj = makeLabel(displayName.length > 14 ? displayName.slice(0, 13) + '…' : displayName, x + (ov.dx ?? 0), p.height_m + 7 + (ov.dz ?? 0), z, 'map-label-building');
+    const obj = makeLabel(displayName.length > 14 ? displayName.slice(0, 13) + '…' : displayName, x, p.height_m + 7, z, 'map-label-building');
     obj.userData.labelId = p.osm_id;
     group.add(obj);
   }

@@ -5,5 +5,21 @@
   "plazas": [],
   "roads": [],
   "markers": [],
-  "labelOverrides": {}
+  "labelOverrides": {
+    "way/797032803": {
+      "name": "德馨苑 A1"
+    },
+    "way/797032799": {
+      "name": "德馨苑 A2"
+    },
+    "way/797032797": {
+      "name": "德馨苑 A3"
+    },
+    "way/797032791": {
+      "name": "德馨苑 A4"
+    },
+    "way/797032793": {
+      "hidden": true
+    }
+  }
 }
