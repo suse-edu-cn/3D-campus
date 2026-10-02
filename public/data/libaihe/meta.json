@@ -1,0 +1,1 @@
+{"campus":"libaihe","name":"李白河校区","center":{"lon":104.828554,"lat":29.382207},"bbox":{"minLat":29.377831,"maxLat":29.386584,"minLon":104.823146,"maxLon":104.833962},"camera":{"pos":[120,480,820],"target":[0,0,-120]},"counts":{"buildings":60,"roads":125,"water":13,"green":71,"pitch":21,"boundary":1,"poi":6},"source":"OpenStreetMap (Overpass API)"}

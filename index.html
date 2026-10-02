@@ -77,6 +77,37 @@
           transform: rotate(360deg);
         }
       }
+      #campus-switcher {
+        position: fixed;
+        top: 14px;
+        right: 14px;
+        z-index: 16;
+        display: flex;
+        gap: 6px;
+        background: rgba(20, 45, 70, 0.55);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        border-radius: 20px;
+        padding: 4px;
+        backdrop-filter: blur(4px);
+      }
+      .campus-btn {
+        padding: 7px 18px;
+        font-size: 13px;
+        letter-spacing: 1px;
+        color: rgba(255, 255, 255, 0.85);
+        background: transparent;
+        border: none;
+        border-radius: 16px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      .campus-btn:hover {
+        color: #fff;
+      }
+      .campus-btn.active {
+        background: #2e6e9e;
+        color: #fff;
+      }
       .ui-toggle {
         position: fixed;
         top: 14px;
@@ -320,6 +351,7 @@
   <body>
     <div id="app"></div>
     <div class="title-bar">四川轻化工大学宜宾校区 · 3D 地图</div>
+    <div id="campus-switcher"></div>
     <div id="editor-panel" class="hidden">
       <div class="ed-title">编辑设施位置 <button id="ed-close" type="button">×</button></div>
       <div id="ed-name">(未选中)</div>

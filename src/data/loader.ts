@@ -52,8 +52,8 @@ interface FeatureCollection<P> {
   features: Feature<P>[];
 }
 
-async function fetchLayer<P>(file: string): Promise<Feature<P>[]> {
-  const res = await fetch(`./data/${file}`);
+async function fetchLayer<P>(campus: string, file: string): Promise<Feature<P>[]> {
+  const res = await fetch(`./data/${campus}/${file}`);
   if (!res.ok) throw new Error(`加载 ${file} 失败 (HTTP ${res.status})`);
   const fc = (await res.json()) as FeatureCollection<P>;
   return fc.features;
@@ -71,21 +71,34 @@ export interface CampusData {
 
 import type { ManualState } from '../scene/manual';
 
-export async function loadCampusData(): Promise<CampusData> {
+export interface CampusInfo {
+  id: string;
+  name: string;
+  camera: { pos: [number, number, number]; target: [number, number, number] };
+}
+
+export async function loadCampusRegistry(): Promise<CampusInfo[]> {
+  const res = await fetch('./data/campuses.json');
+  if (!res.ok) throw new Error(`加载 campuses.json 失败 (HTTP ${res.status})`);
+  const j = (await res.json()) as { campuses: CampusInfo[] };
+  return j.campuses;
+}
+
+export async function loadCampusData(campus: string): Promise<CampusData> {
   const [buildings, roads, water, green, pitch, boundary, poi] = await Promise.all([
-    fetchLayer<BuildingProps>('buildings.geojson'),
-    fetchLayer<RoadProps>('roads.geojson'),
-    fetchLayer<KindProps>('water.geojson'),
-    fetchLayer<KindProps>('green.geojson'),
-    fetchLayer<KindProps>('pitch.geojson'),
-    fetchLayer<BoundaryProps>('boundary.geojson'),
-    fetchLayer<PoiProps>('poi.geojson'),
+    fetchLayer<BuildingProps>(campus, 'buildings.geojson'),
+    fetchLayer<RoadProps>(campus, 'roads.geojson'),
+    fetchLayer<KindProps>(campus, 'water.geojson'),
+    fetchLayer<KindProps>(campus, 'green.geojson'),
+    fetchLayer<KindProps>(campus, 'pitch.geojson'),
+    fetchLayer<BoundaryProps>(campus, 'boundary.geojson'),
+    fetchLayer<PoiProps>(campus, 'poi.geojson'),
   ]);
   return { buildings, roads, water, green, pitch, boundary, poi };
 }
 
-export async function loadManual(): Promise<ManualState> {
-  const res = await fetch('./data/manual.json');
+export async function loadManual(campus: string): Promise<ManualState> {
+  const res = await fetch(`./data/${campus}/manual.json`);
   if (!res.ok) throw new Error(`加载 manual.json 失败 (HTTP ${res.status})`);
   return (await res.json()) as ManualState;
 }

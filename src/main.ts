@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { PALETTE } from './scene/palette';
-import { loadCampusData, loadManual } from './data/loader';
+import { loadCampusData, loadManual, loadCampusRegistry, type CampusInfo } from './data/loader';
+import { setProjectionCenter } from './data/projection';
+import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { ManualFeatures } from './scene/manual';
 import { buildGround } from './scene/ground';
 import { buildGreen, buildWater, buildPitch } from './scene/layers';
@@ -62,41 +64,101 @@ function hideLoading() {
   loadingEl.classList.add('done');
 }
 
+let clearSelectionRef: (() => void) | null = null;
+let getPickMeshesList: () => THREE.Mesh[] = () => [];
+let pickMeshes: THREE.Mesh[] = [];
 let layers: Record<string, THREE.Object3D | null> = {};
 let fly: { pos: THREE.Vector3; target: THREE.Vector3; t: number } | null = null;
 let lastTime: number | null = null;
-async function init() {
-  const data = await loadCampusData();
+let currentCampus: string | null = null;
+let campusRoot: THREE.Group | null = null;
+let campusList: CampusInfo[] = [];
 
+async function loadCampus(id: string): Promise<void> {
+  if (currentCampus === id) return;
+  const info = campusList.find((c) => c.id === id);
+  if (!info) throw new Error(`未知校区: ${id}`);
+  clearSelectionRef?.();
+
+  // 释放旧校区内容(CSS2D 元素 + 几何体)
+  if (campusRoot) {
+    campusRoot.traverse((o) => {
+      if (o instanceof CSS2DObject && o.element.parentElement) {
+        o.element.parentElement.removeChild(o.element);
+      }
+      if (o instanceof THREE.Mesh || o instanceof THREE.InstancedMesh) o.geometry?.dispose();
+      if (o instanceof THREE.InstancedMesh) o.dispose();
+    });
+    scene.remove(campusRoot);
+    campusRoot = null;
+  }
+
+  setProjectionCenter((await (await fetch(`./data/${id}/meta.json`)).json()).center);
+  const data = await loadCampusData(id);
+
+  campusRoot = new THREE.Group();
   const groundGroup = buildGround(data.boundary);
   const green = buildGreen(data);
   const pitch = buildPitch(data);
   const water = buildWater(data);
   const roads = buildRoads(data);
-  scene.add(groundGroup, green, pitch, water, roads);
+  campusRoot.add(groundGroup, green, pitch, water, roads);
 
   const buildings = buildBuildings(data);
-  scene.add(buildings);
+  campusRoot.add(buildings);
 
   // 手工校准设施(校门/网球场/室内馆/广场/中轴步道)
-  const manualState = await loadManual();
+  const manualState = await loadManual(id);
   const manual = new ManualFeatures(manualState);
-  scene.add(manual.group);
+  campusRoot.add(manual.group);
   const manualPlazaRings = manualState.plazas.map((p) => p.ring);
 
   const trees = buildTrees(data, manualPlazaRings);
-  scene.add(trees);
+  campusRoot.add(trees);
+
+  const labels = buildLabels(data);
+  campusRoot.add(labels);
+
+  scene.add(campusRoot);
+  layers = { groundGroup, green, pitch, water, roads, buildings, trees, labels };
+  pickMeshes = getPickMeshesList();
+
+  // 相机重置到该校区的默认视角
+  camera.position.set(...info.camera.pos);
+  controls.target.set(...info.camera.target);
+  controls.update();
+
+  currentCampus = id;
+  // 标题随校区切换
+  const titleText = `四川轻化工大学${info.name} · 3D 地图`;
+  document.querySelector('.title-bar')!.textContent = titleText;
+  document.title = titleText;
+  // 切换按钮高亮
+  document.querySelectorAll('.campus-btn').forEach((b) => {
+    b.classList.toggle('active', (b as HTMLElement).dataset.campus === id);
+  });
+}
+
+async function init() {
+  campusList = await loadCampusRegistry();
+  const switcher = document.getElementById('campus-switcher')!;
+  for (const c of campusList) {
+    const btn = document.createElement('button');
+    btn.className = 'campus-btn';
+    btn.dataset.campus = c.id;
+    btn.textContent = c.name;
+    btn.addEventListener('click', () => loadCampus(c.id));
+    switcher.appendChild(btn);
+  }
 
   // —— 交互:点击建筑信息面板 ——
   const panel = new InfoPanel();
+  clearSelectionRef = () => clearSelection();
+  pickMeshes = [];
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
   let selected: THREE.Mesh | null = null;
   let savedMats: THREE.Material[] | null = null;
-  const getPickMeshes = (): THREE.Mesh[] => [
-    ...(buildings.children.filter((c): c is THREE.Mesh => c instanceof THREE.Mesh)),
-    ...manual.buildingMeshes,
-  ];
 
   function clearSelection() {
     if (selected && savedMats) selected.material = savedMats;
@@ -116,7 +178,7 @@ async function init() {
   function pickAt(clientX: number, clientY: number): THREE.Mesh | null {
     pointer.set((clientX / window.innerWidth) * 2 - 1, -(clientY / window.innerHeight) * 2 + 1);
     raycaster.setFromCamera(pointer, camera);
-    const hits = raycaster.intersectObjects(getPickMeshes(), false);
+    const hits = raycaster.intersectObjects(pickMeshes, false);
     return hits.length && hits[0].object.userData.osm_id ? (hits[0].object as THREE.Mesh) : null;
   }
   let downX = 0, downY = 0;
@@ -148,17 +210,15 @@ async function init() {
     fly = { pos, target, t: 0 };
   }
 
-  const labels = buildLabels(data);
-  scene.add(labels);
-
-  layers = { groundGroup, green, pitch, water, roads, buildings, trees, labels };
   hideLoading();
 }
 
-init().catch((err) => {
-  console.error(err);
-  loadingEl.querySelector('.loading-text')!.textContent = `加载失败:${err.message}`;
-});
+init()
+  .then(() => loadCampus(campusList[0]?.id ?? 'yibin'))
+  .catch((err) => {
+    console.error(err);
+    loadingEl.querySelector('.loading-text')!.textContent = `加载失败:${err.message}`;
+  });
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
