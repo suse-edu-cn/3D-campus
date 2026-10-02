@@ -316,6 +316,19 @@
       #ed-export:hover {
         background: #2a628c;
       }
+      .map-label-marker {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .marker-dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: #ff8c42;
+        border: 1.5px solid #fff;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+      }
       .editor-marker {
         width: 15px;
         height: 15px;
@@ -352,9 +365,11 @@
     <div id="app"></div>
     <div class="title-bar">四川轻化工大学宜宾校区 · 3D 地图</div>
     <div id="campus-switcher"></div>
+    <button id="edit-toggle" class="ui-toggle" type="button" style="right: 14px; top: 64px;">编辑位置</button>
     <div id="editor-panel" class="hidden">
       <div class="ed-title">编辑设施位置 <button id="ed-close" type="button">×</button></div>
       <div id="ed-name">(未选中)</div>
+      <label>名称 <input id="ed-name-input" type="text" style="width: 120px;" /></label>
       <label>X <input id="ed-x" type="number" step="1" /></label>
       <label>Z <input id="ed-z" type="number" step="1" /></label>
       <label>旋转° <input id="ed-rot" type="number" step="1" /></label>
@@ -363,6 +378,7 @@
         <button id="ed-add-gate" type="button">+校门</button>
         <button id="ed-add-court" type="button">+球场</button>
         <button id="ed-add-hall" type="button">+场馆</button>
+        <button id="ed-add-marker" type="button">+标注</button>
       </div>
       <button id="ed-delete" type="button">删除选中设施</button>
       <button id="ed-export" type="button">导出 manual.json(复制+下载)</button>

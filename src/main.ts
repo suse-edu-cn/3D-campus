@@ -5,6 +5,7 @@ import { loadCampusData, loadManual, loadCampusRegistry, type CampusInfo } from 
 import { setProjectionCenter } from './data/projection';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { ManualFeatures } from './scene/manual';
+import { ManualEditor } from './ui/editor';
 import { buildGround } from './scene/ground';
 import { buildGreen, buildWater, buildPitch } from './scene/layers';
 import { buildRoads } from './scene/roads';
@@ -14,6 +15,7 @@ import { buildLabels, createLabelRenderer } from './scene/labels';
 import { InfoPanel } from './ui/infoPanel';
 const app = document.getElementById('app')!;
 const loadingEl = document.getElementById('loading')!;
+const editBtn = document.getElementById('edit-toggle') as HTMLButtonElement;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -67,6 +69,8 @@ function hideLoading() {
 let clearSelectionRef: (() => void) | null = null;
 let getPickMeshesList: () => THREE.Mesh[] = () => [];
 let pickMeshes: THREE.Mesh[] = [];
+let editor: ManualEditor | null = null;
+let currentManual: ManualFeatures | null = null;
 let layers: Record<string, THREE.Object3D | null> = {};
 let fly: { pos: THREE.Vector3; target: THREE.Vector3; t: number } | null = null;
 let lastTime: number | null = null;
@@ -110,7 +114,16 @@ async function loadCampus(id: string): Promise<void> {
   // 手工校准设施(校门/网球场/室内馆/广场/中轴步道)
   const manualState = await loadManual(id);
   const manual = new ManualFeatures(manualState);
+  currentManual = manual;
   campusRoot.add(manual.group);
+  if (!editor) {
+    editor = new ManualEditor(() => currentManual!, camera, controls);
+    scene.add(editor.markerGroup);
+    editBtn.style.display = 'block';
+    editBtn.addEventListener('click', () => editor!.toggle());
+  } else {
+    editor.setCampus(id);
+  }
   const manualPlazaRings = manualState.plazas.map((p) => p.ring);
 
   const trees = buildTrees(data, manualPlazaRings);
