@@ -323,6 +323,29 @@
         display: flex;
         align-items: center;
         gap: 5px;
+        pointer-events: auto; /* 标注可点击/拖拽 */
+        cursor: move;
+      }
+      .ed-dot {
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+        background: #ff8c42;
+        border: 2px solid #fff;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+        display: inline-block;
+        margin-right: 6px;
+        vertical-align: middle;
+        cursor: pointer;
+        pointer-events: auto; /* 关键:覆盖标签的 none,让真实点击可命中 */
+        flex-shrink: 0;
+      }
+      .ed-dot:hover {
+        transform: scale(1.25);
+      }
+      .ed-dot.selected {
+        background: #ffc23c;
+        transform: scale(1.3);
       }
       .marker-dot {
         width: 9px;

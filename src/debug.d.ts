@@ -6,8 +6,9 @@ declare global {
       camera: unknown;
       controls: unknown;
       scene: unknown;
-      layers?: Record<string, unknown | null>;
+      getLayers: () => Record<string, unknown | null> | null;
+      getEditor: () => unknown | null;
     };
-    __editor?: unknown;
+    __renderOnce?: () => void;
   }
 }

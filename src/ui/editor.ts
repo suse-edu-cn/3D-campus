@@ -183,8 +183,14 @@ export class LabelEditor {
     let i = 1;
     while (state.markers.some((m) => m.id === `marker-${i}`)) i++;
     const id = `marker-${i}`;
-    const target = this.controls.target;
-    state.markers.push({ id, name: `标注${i}`, x: Math.round(target.x), z: Math.round(target.z) });
+    // 生成在相机前方 60m 的地面处,创建即可见
+    const dir = new THREE.Vector3();
+    this.camera.getWorldDirection(dir);
+    dir.y = 0;
+    if (dir.lengthSq() < 1e-6) dir.set(0, 0, -1);
+    dir.normalize();
+    const pos = this.camera.position.clone().addScaledVector(dir, 60);
+    state.markers.push({ id, name: `标注${i}`, x: Math.round(pos.x), z: Math.round(pos.z) });
     const obj = this.makeMarker(state.markers[state.markers.length - 1]);
     this.markerLayer.add(obj);
     this.select(`marker:${id}`);

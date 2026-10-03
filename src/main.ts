@@ -276,5 +276,16 @@ renderer.setAnimationLoop((time) => {
 });
 
 // 调试/测试钩子:浏览器控制台或自动化脚本可调整相机
-window.__cam = { camera, controls, scene, get layers() { return layers; } };
-window.__cam = { ...window.__cam, get __editor() { return editor; } };
+window.__cam = {
+  camera,
+  controls,
+  scene,
+  getLayers: () => layers,
+  getEditor: () => editor,
+};
+// 后台标签页 rAF 会被浏览器暂停,提供手动渲染钩子供自动化验证
+window.__renderOnce = () => {
+  controls.update();
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+};
