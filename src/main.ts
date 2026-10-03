@@ -121,14 +121,6 @@ async function loadCampus(id: string): Promise<void> {
   const manual = new ManualFeatures(manualState);
   currentManual = manual;
   campusRoot.add(manual.group);
-  if (!editor) {
-    editor = new LabelEditor(() => currentManual!.state, () => currentData!, () => labelsRef, camera, controls);
-    scene.add(editor.markerLayerGroup);
-    editBtn.style.display = 'block';
-    editBtn.addEventListener('click', () => editor!.toggle());
-  } else {
-    editor.setCampus(id);
-  }
   const manualPlazaRings = manualState.plazas.map((p) => p.ring);
 
   const trees = buildTrees(data, manualPlazaRings);
@@ -137,6 +129,16 @@ async function loadCampus(id: string): Promise<void> {
   let labels = buildLabels(data, manualState.labelOverrides ?? {});
   labelsRef = labels;
   campusRoot.add(labels);
+
+  // 编辑模式(标签 增删改)——在标签构建之后初始化/刷新
+  if (!editor) {
+    editor = new LabelEditor(() => currentManual!.state, () => currentData!, () => labelsRef, camera, controls);
+    scene.add(editor.markerLayerGroup);
+    editBtn.style.display = 'block';
+    editBtn.addEventListener('click', () => editor!.toggle());
+  } else {
+    editor.setCampus(id);
+  }
   const rebuildLabels = () => {
     labels.traverse((o) => {
       if (o instanceof CSS2DObject && o.element.parentElement) o.element.parentElement.removeChild(o.element);
