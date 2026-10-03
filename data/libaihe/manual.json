@@ -1,5 +1,13 @@
 {
-  "gates": [],
+  "gates": [
+    {
+      "id": "gate-nandamen",
+      "name": "南大门",
+      "x": 210,
+      "z": 232,
+      "rot": 0
+    }
+  ],
   "pitches": [],
   "buildings": [],
   "plazas": [],
@@ -19,6 +27,36 @@
       "name": "德馨苑 A4"
     },
     "way/797032793": {
+      "hidden": true
+    },
+    "way/797032825": {
+      "hidden": true
+    },
+    "relation/11041596": {
+      "hidden": true
+    },
+    "relation/11041597": {
+      "name": "H1S 敏行楼"
+    },
+    "way/797032820": {
+      "name": "清源楼"
+    },
+    "way/797032824": {
+      "hidden": true
+    },
+    "way/797032822": {
+      "name": "H2博约楼"
+    },
+    "relation/11041598": {
+      "name": "H1博学楼"
+    },
+    "relation/11041599": {
+      "hidden": true
+    },
+    "way/797032837": {
+      "name": "美术馆（尚艺馆）"
+    },
+    "way/797032832": {
       "hidden": true
     }
   }

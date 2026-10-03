@@ -52,7 +52,8 @@ const CAMPUS_CONFIG = {
     outDir: resolve(ROOT, 'public/data/libaihe'),
     boundaryMatch: (name) => name.includes('四川轻化工大学'),
     camera: { pos: [120, 480, 820], target: [0, 0, -120] },
-    excludeIds: new Set(),
+    // 3#公共教学楼:用户指正删除;南大门:改为门楼结构(见 manual.json gates)
+    excludeIds: new Set(['way/797032821', 'way/797032806']),
     overrides: {
       // —— 命名以官方示意图为准 ——
       'way/797032811': { name: '图书馆', levels: 5, floor: 5.6, desc: '图书馆(含综合楼),校区地标' },
@@ -61,7 +62,6 @@ const CAMPUS_CONFIG = {
       'way/797032833': { name: '雅韵楼(音乐学院)', levels: 5 },
       'relation/11041600': { name: '尚美楼(美术学院)', levels: 5 },
       'way/797032809': { name: '体育馆·游泳馆', kind: 'gym', height: 20 },
-      'way/797032806': { name: '南大门', kind: 'service', levels: 2 },
       'way/797032803': { name: '德馨苑1#', kind: 'dormitory' },
       'way/797032799': { name: '德馨苑2#', kind: 'dormitory' },
       'way/797032797': { name: '德馨苑3#', kind: 'dormitory' },
