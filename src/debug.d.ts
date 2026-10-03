@@ -7,7 +7,6 @@ declare global {
       controls: unknown;
       scene: unknown;
       getLayers: () => Record<string, unknown | null> | null;
-      getEditor: () => unknown | null;
     };
     __renderOnce?: () => void;
   }

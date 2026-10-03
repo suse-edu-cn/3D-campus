@@ -16,14 +16,13 @@ export interface ManualBuilding {
 }
 export interface ManualPlaza { id: string; name: string; kind: string; ring: [number, number][] }
 export interface ManualRoad { id: string; name: string; cls: string; waypoints: [number, number][] }
-export interface ManualMarker { id: string; name: string; x: number; z: number }
 export interface LabelOverride {
   name?: string;    // 改名
-  hidden?: boolean; // 删除(隐藏)标签
+  hidden?: boolean; // 隐藏标签
 }
 export interface ManualState {
   gates: ManualGate[]; pitches: ManualPitch[]; buildings: ManualBuilding[];
-  plazas: ManualPlaza[]; roads: ManualRoad[]; markers?: ManualMarker[];
+  plazas: ManualPlaza[]; roads: ManualRoad[];
   labelOverrides?: Record<string, LabelOverride>;
 }
 
@@ -55,7 +54,7 @@ export class ManualFeatures {
   group = new THREE.Group();
   /** 可拾取的室内馆等建筑网格(供信息面板射线) */
   buildingMeshes: THREE.Mesh[] = [];
-  private registry = new Map<string, { type: 'gate' | 'pitch' | 'building' | 'plaza' | 'road' | 'marker'; node: THREE.Object3D }>();
+  private registry = new Map<string, { type: 'gate' | 'pitch' | 'building' | 'plaza' | 'road'; node: THREE.Object3D }>();
 
   constructor(public state: ManualState) {
     this.rebuildAll();
@@ -67,7 +66,6 @@ export class ManualFeatures {
     for (const b of this.state.buildings) this.rebuild(b.id);
     for (const p of this.state.plazas) this.rebuild(p.id);
     for (const r of this.state.roads) this.rebuild(r.id);
-    for (const m of this.state.markers ?? []) this.rebuild(m.id);
   }
 
   anchorOf(id: string): THREE.Vector3 {
@@ -112,9 +110,6 @@ export class ManualFeatures {
     } else if (this.state.roads.find((r) => r.id === id)) {
       type = 'road';
       node = this.buildRoad(this.state.roads.find((r) => r.id === id)!);
-    } else if ((this.state.markers ?? []).find((m) => m.id === id)) {
-      type = 'marker';
-      node = this.buildMarker((this.state.markers ?? []).find((m) => m.id === id)!);
     }
     if (node) {
       this.group.add(node);
@@ -134,14 +129,6 @@ export class ManualFeatures {
     this.state.buildings = this.state.buildings.filter((b) => b.id !== id);
     this.state.plazas = this.state.plazas.filter((p) => p.id !== id);
     this.state.roads = this.state.roads.filter((r) => r.id !== id);
-    if (this.state.markers) this.state.markers = this.state.markers.filter((m) => m.id !== id);
-  }
-
-  /** 生成不重复 id */
-  nextId(prefix: string): string {
-    let i = 1;
-    while (this.registry.has(`${prefix}-${i}`) || this.state.gates.some((g) => g.id === `${prefix}-${i}`)) i++;
-    return `${prefix}-${i}`;
   }
 
   // ---------- 各类构建 ----------
@@ -235,21 +222,6 @@ export class ManualFeatures {
     const mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0xdcd4a8, roughness: 0.95 }));
     mesh.receiveShadow = true;
     group.add(mesh);
-    return group;
-  }
-
-  private buildMarker(m: ManualMarker): THREE.Group {
-    const group = new THREE.Group();
-    const el = document.createElement('div');
-    el.className = 'map-label map-label-marker';
-    const dot = document.createElement('span');
-    dot.className = 'marker-dot';
-    el.appendChild(dot);
-    el.appendChild(document.createTextNode(m.name));
-    const label = new CSS2DObject(el);
-    label.position.set(0, 0, 0);
-    group.add(label);
-    group.position.set(m.x, 8, m.z);
     return group;
   }
 

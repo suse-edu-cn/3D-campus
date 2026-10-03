@@ -1,11 +1,10 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { PALETTE } from './scene/palette';
-import { loadCampusData, loadManual, loadCampusRegistry, type CampusInfo, type CampusData } from './data/loader';
+import { loadCampusData, loadManual, loadCampusRegistry, type CampusInfo } from './data/loader';
 import { setProjectionCenter } from './data/projection';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { ManualFeatures } from './scene/manual';
-import { LabelEditor } from './ui/editor';
 import { buildGround } from './scene/ground';
 import { buildGreen, buildWater, buildPitch } from './scene/layers';
 import { buildRoads } from './scene/roads';
@@ -15,7 +14,6 @@ import { buildLabels, createLabelRenderer } from './scene/labels';
 import { InfoPanel } from './ui/infoPanel';
 const app = document.getElementById('app')!;
 const loadingEl = document.getElementById('loading')!;
-const editBtn = document.getElementById('edit-toggle') as HTMLButtonElement;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -69,10 +67,6 @@ function hideLoading() {
 let clearSelectionRef: (() => void) | null = null;
 let getPickMeshesList: () => THREE.Mesh[] = () => [];
 let pickMeshes: THREE.Mesh[] = [];
-let editor: LabelEditor | null = null;
-let labelsRef: THREE.Group | null = null;
-let currentManual: ManualFeatures | null = null;
-let currentData: CampusData | null = null;
 let currentMeta: { center: { lat: number; lon: number } } | null = null;
 let layers: Record<string, THREE.Object3D | null> = {};
 let fly: { pos: THREE.Vector3; target: THREE.Vector3; t: number } | null = null;
@@ -103,7 +97,6 @@ async function loadCampus(id: string): Promise<void> {
   currentMeta = await (await fetch(`./data/${id}/meta.json`)).json();
   setProjectionCenter(currentMeta!.center);
   const data = await loadCampusData(id);
-  currentData = data;
 
   campusRoot = new THREE.Group();
   const groundGroup = buildGround(data.boundary);
@@ -119,7 +112,6 @@ async function loadCampus(id: string): Promise<void> {
   // 手工校准设施(校门/网球场/室内馆/广场/中轴步道)
   const manualState = await loadManual(id);
   const manual = new ManualFeatures(manualState);
-  currentManual = manual;
   campusRoot.add(manual.group);
   const manualPlazaRings = manualState.plazas.map((p) => p.ring);
 
@@ -127,32 +119,7 @@ async function loadCampus(id: string): Promise<void> {
   campusRoot.add(trees);
 
   let labels = buildLabels(data, manualState.labelOverrides ?? {});
-  labelsRef = labels;
   campusRoot.add(labels);
-
-  // 编辑模式(标签 增删改)——在标签构建之后初始化/刷新
-  if (!editor) {
-    editor = new LabelEditor(() => currentManual!.state, () => currentData!, () => labelsRef, camera, controls);
-    scene.add(editor.markerLayerGroup);
-    editBtn.style.display = 'block';
-    editBtn.addEventListener('click', () => editor!.toggle());
-  } else {
-    editor.setCampus(id);
-  }
-  const rebuildLabels = () => {
-    labels.traverse((o) => {
-      if (o instanceof CSS2DObject && o.element.parentElement) o.element.parentElement.removeChild(o.element);
-    });
-    campusRoot!.remove(labels);
-    labels = buildLabels(data, manualState.labelOverrides ?? {});
-    labelsRef = labels;
-    campusRoot!.add(labels);
-    layers.labels = labels;
-  };
-  editor.onLabelOverridesChange = () => {
-    rebuildLabels();
-    editor!.attachDots();
-  };
 
   scene.add(campusRoot);
   layers = { groundGroup, green, pitch, water, roads, buildings, trees, labels };
@@ -283,7 +250,6 @@ window.__cam = {
   controls,
   scene,
   getLayers: () => layers,
-  getEditor: () => editor,
 };
 // 后台标签页 rAF 会被浏览器暂停,提供手动渲染钩子供自动化验证
 window.__renderOnce = () => {
