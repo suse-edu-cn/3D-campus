@@ -135,6 +135,7 @@ async function loadCampus(id: string): Promise<void> {
   campusRoot.add(trees);
 
   let labels = buildLabels(data, manualState.labelOverrides ?? {});
+  labelsRef = labels;
   campusRoot.add(labels);
   const rebuildLabels = () => {
     labels.traverse((o) => {

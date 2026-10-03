@@ -206,6 +206,7 @@ export class LabelEditor {
 
   private bindPanel(): void {
     const nameInput = document.getElementById('ed-name-input') as HTMLInputElement;
+    this.inputs['name'] = nameInput;
     nameInput.addEventListener('change', () => this.applyRename(nameInput.value));
     document.getElementById('ed-delete')!.addEventListener('click', () => this.deleteSelected());
     document.getElementById('ed-add-marker')!.addEventListener('click', () => this.addMarker());
